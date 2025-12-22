@@ -1,0 +1,13 @@
+objetivo: ensinar o claude code SDLC (OK)
+
+1. Planeje
+2. Implemente 
+3. Teste
+4. Review 
+
+----------- 
+
+
+1. Construir a UI para o SDLC (In progress)
+2. Dar vida a UI do SDLC executando as skills e comandos ao arrastar os cards
+3. Ensinar o claude code a abrir páginas web e testar a aplicação 

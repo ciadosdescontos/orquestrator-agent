@@ -1,0 +1,6 @@
+.board {
+  display: flex;
+  gap: var(--spacing-lg);
+  min-height: calc(100vh - 140px);
+  padding-bottom: var(--spacing-lg);
+}

@@ -1,0 +1,103 @@
+.addButton {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-top: var(--spacing-sm);
+  background: none;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.addButton:hover {
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-light);
+}
+
+.input,
+.textarea {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: inherit;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.input:focus,
+.textarea:focus {
+  border-color: var(--accent-primary);
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.submitButton,
+.cancelButton {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.submitButton {
+  background-color: var(--accent-primary);
+  color: white;
+}
+
+.submitButton:hover:not(:disabled) {
+  background-color: #1d4ed8;
+}
+
+.submitButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cancelButton {
+  background-color: var(--bg-column);
+  color: var(--text-secondary);
+}
+
+.cancelButton:hover {
+  background-color: var(--border-light);
+}
