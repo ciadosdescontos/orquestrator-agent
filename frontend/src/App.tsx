@@ -7,6 +7,9 @@ import { ProjectLoader } from './components/ProjectLoader/ProjectLoader';
 import { ProjectSwitcher } from './components/ProjectSwitcher';
 import { useAgentExecution } from './hooks/useAgentExecution';
 import { useWorkflowAutomation } from './hooks/useWorkflowAutomation';
+import { useChat } from './hooks/useChat';
+import Chat from './components/Chat/Chat';
+import ChatToggle from './components/ChatToggle/ChatToggle';
 import * as cardsApi from './api/cards';
 import { getCurrentProject } from './api/projects';
 import styles from './App.module.css';
@@ -21,7 +24,8 @@ function App() {
   const [initialWorkflowStatuses, setInitialWorkflowStatuses] = useState<Map<string, WorkflowStatus> | undefined>();
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const dragStartColumnRef = useRef<ColumnId | null>(null);
-  const { executePlan, executeImplement, executeTest, executeReview, getExecutionStatus } = useAgentExecution(initialExecutions);
+  const { executePlan, executeImplement, executeTest, executeReview, getExecutionStatus, registerCompletionCallback, executions } = useAgentExecution(initialExecutions);
+  const { state: chatState, sendMessage, toggleChat, closeChat } = useChat();
 
   // Define moveCard and updateCardSpecPath BEFORE useWorkflowAutomation
   const moveCard = (cardId: string, newColumnId: ColumnId) => {
@@ -52,6 +56,9 @@ function App() {
     onCardMove: moveCard,
     onSpecPathUpdate: updateCardSpecPath,
     initialStatuses: initialWorkflowStatuses,
+    cards,
+    registerCompletionCallback,
+    executions,
   });
 
   // Load cards, active executions, and current project from API on mount
@@ -384,6 +391,23 @@ function App() {
           </DragOverlay>
         </DndContext>
       </main>
+
+      {/* Chat Panel */}
+      <Chat
+        isOpen={chatState.isOpen}
+        onClose={closeChat}
+        messages={chatState.session?.messages || []}
+        isLoading={chatState.isLoading}
+        error={chatState.error}
+        onSendMessage={sendMessage}
+      />
+
+      {/* Chat Toggle Button */}
+      <ChatToggle
+        isOpen={chatState.isOpen}
+        onClick={toggleChat}
+      />
+
       <div id="modal-root" />
     </div>
   );

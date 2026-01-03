@@ -41,7 +41,20 @@ export async function getCurrentProject(): Promise<Project | null> {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+
+    // Backend retorna {success: bool, project: Project | null}
+    if (data.success && data.project) {
+      return {
+        id: data.project.id,
+        name: data.project.name,
+        path: data.project.path,
+        hasClaudeConfig: data.project.has_claude_config || data.project.hasClaudeConfig || false,
+        loadedAt: data.project.loaded_at || data.project.loadedAt || new Date().toISOString(),
+      };
+    }
+
+    return null;
   } catch (error) {
     if (error instanceof TypeError && error.message === 'Failed to fetch') {
       console.error(
@@ -116,6 +129,32 @@ export async function quickSwitchProject(projectPath: string): Promise<Project> 
 
     const data = await response.json();
     return data.project;
+  } catch (error) {
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      throw new Error(
+        `Não foi possível conectar ao servidor em ${API_CONFIG.BASE_URL}. ` +
+        'Verifique se o backend está rodando (make backend).'
+      );
+    }
+    throw error;
+  }
+}
+
+export async function clearAllProjects(): Promise<void> {
+  try {
+    const response = await fetch(`${API_CONFIG.BASE_URL}/api/projects/current`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.detail || `Falha ao sair do projeto (HTTP ${response.status})`
+      );
+    }
+
+    // Resposta apenas confirma sucesso, não retorna projeto
+    await response.json();
   } catch (error) {
     if (error instanceof TypeError && error.message === 'Failed to fetch') {
       throw new Error(

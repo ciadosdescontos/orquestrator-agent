@@ -17,11 +17,14 @@ interface ExecuteImplementResult {
   error?: string;
 }
 
+// Callback type for execution completion
+type ExecutionCompletionCallback = (execution: ExecutionStatus) => void;
+
 export function useAgentExecution(initialExecutions?: Map<string, ExecutionStatus>) {
-  const [executions, setExecutions] = useState<Map<string, ExecutionStatus>>(
-    initialExecutions || new Map()
-  );
+  const [executions, setExecutions] = useState<Map<string, ExecutionStatus>>(new Map());
   const pollingIntervalsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  // Callbacks to be called when an execution completes (for workflow recovery)
+  const completionCallbacksRef = useRef<Map<string, ExecutionCompletionCallback>>(new Map());
 
   // Cleanup polling intervals on unmount
   useEffect(() => {
@@ -31,17 +34,27 @@ export function useAgentExecution(initialExecutions?: Map<string, ExecutionStatu
     };
   }, []);
 
-  // Restore polling for running executions
+  // Update executions state when initialExecutions becomes available
   useEffect(() => {
-    if (initialExecutions) {
+    if (initialExecutions && initialExecutions.size > 0) {
+      console.log(`[useAgentExecution] Loading ${initialExecutions.size} initial executions`);
+      setExecutions(new Map(initialExecutions));
+    }
+  }, [initialExecutions]);
+
+  // Restore polling for running executions when initialExecutions becomes available
+  useEffect(() => {
+    if (initialExecutions && initialExecutions.size > 0) {
+      console.log(`[useAgentExecution] Restoring ${initialExecutions.size} executions`);
       initialExecutions.forEach((execution, cardId) => {
         if (execution.status === 'running') {
-          console.log(`[useAgentExecution] Restoring polling for card: ${cardId}`);
+          console.log(`[useAgentExecution] Restoring polling for card: ${cardId}`, execution);
           startPolling(cardId);
         }
       });
     }
-  }, []); // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialExecutions]); // startPolling is stable, we only care about initialExecutions changing
 
   // Function to fetch logs from API
   const fetchLogs = useCallback(async (cardId: string) => {
@@ -88,6 +101,18 @@ export function useAgentExecution(initialExecutions?: Map<string, ExecutionStatu
           // Stop polling if execution completed
           if (execution.status !== 'running') {
             stopPolling(cardId);
+
+            // Call completion callback if registered (for workflow recovery)
+            const callback = completionCallbacksRef.current.get(cardId);
+            if (callback) {
+              const completedExecution = next.get(cardId);
+              if (completedExecution) {
+                console.log(`[useAgentExecution] Calling completion callback for card: ${cardId}`);
+                // Use setTimeout to ensure state is updated before callback
+                setTimeout(() => callback(completedExecution), 0);
+              }
+              completionCallbacksRef.current.delete(cardId);
+            }
           }
 
           return next;
@@ -492,12 +517,25 @@ export function useAgentExecution(initialExecutions?: Map<string, ExecutionStatu
 
   const clearExecution = useCallback((cardId: string) => {
     stopPolling(cardId);
+    completionCallbacksRef.current.delete(cardId);
     setExecutions((prev) => {
       const next = new Map(prev);
       next.delete(cardId);
       return next;
     });
   }, [stopPolling]);
+
+  // Register a callback to be called when an execution completes
+  // Used for workflow recovery after page refresh
+  const registerCompletionCallback = useCallback((cardId: string, callback: ExecutionCompletionCallback) => {
+    console.log(`[useAgentExecution] Registering completion callback for card: ${cardId}`);
+    completionCallbacksRef.current.set(cardId, callback);
+  }, []);
+
+  // Unregister a completion callback
+  const unregisterCompletionCallback = useCallback((cardId: string) => {
+    completionCallbacksRef.current.delete(cardId);
+  }, []);
 
   return {
     executions,
@@ -507,5 +545,7 @@ export function useAgentExecution(initialExecutions?: Map<string, ExecutionStatu
     executeReview,
     getExecutionStatus,
     clearExecution,
+    registerCompletionCallback,
+    unregisterCompletionCallback,
   };
 }

@@ -133,6 +133,7 @@ class ExecutionRepository:
 
         result = {
             "cardId": card_id,
+            "title": execution.title,
             "executionId": execution.id,
             "status": execution.status.value,
             "command": execution.command,

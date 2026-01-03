@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     # Multi-Database Configuration
     project_data_dir: str = ".project_data"
 
+    # NOVO: Flag para controlar local do database do projeto
+    store_db_in_project: bool = True  # Store project database in .claude folder (True) or .project_data (False)
+
+    # Flag para auto-migração de databases legados
+    auto_migrate_legacy_db: bool = True  # Automatically migrate databases from .project_data to .claude
+
     # Server
     port: int = 3001
 

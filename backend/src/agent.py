@@ -42,7 +42,7 @@ async def get_execution(card_id: str, db_session: Optional[AsyncSession] = None)
         record = executions.get(card_id)
         if record:
             return {
-                "cardId": record.cardId,
+                "cardId": record.card_id,
                 "status": record.status.value,
                 "logs": [
                     {"timestamp": log.timestamp, "type": log.type.value, "content": log.content}
@@ -106,12 +106,23 @@ async def execute_plan(
     db_session: Optional[AsyncSession] = None,
 ) -> PlanResult:
     """Execute a plan using Claude Agent SDK."""
-    # Obter diretório do projeto atual se houver
-    from .project_manager import project_manager as global_project_manager
+    # Obter diretório do projeto atual do banco de dados
+    from .database import async_session_maker
+    from .models.project import ActiveProject
+    from sqlalchemy import select
 
-    if global_project_manager and global_project_manager.current_project:
-        cwd = global_project_manager.get_working_directory()
-        print(f"[Agent] Using project directory: {cwd}")
+    print(f"[Agent] Initial cwd parameter: {cwd}")
+
+    async with async_session_maker() as session:
+        result = await session.execute(
+            select(ActiveProject).order_by(ActiveProject.loaded_at.desc()).limit(1)
+        )
+        active_project = result.scalar_one_or_none()
+        if active_project:
+            cwd = active_project.path
+            print(f"[Agent] Found active project, using project directory: {cwd}")
+        else:
+            print(f"[Agent] No active project found, using default cwd: {cwd}")
 
     # Mapear nome de modelo para valor do SDK
     model_map = {
@@ -177,8 +188,11 @@ async def execute_plan(
 
     try:
         # Configure agent options
+        cwd_path = Path(cwd)
+        print(f"[Agent] Final CWD being used: {cwd_path.absolute()}")
+
         options = ClaudeAgentOptions(
-            cwd=Path(cwd),
+            cwd=cwd_path,
             setting_sources=["user", "project"],  # Load Skills from .claude/skills/
             allowed_tools=["Skill", "Read", "Write", "Edit", "Bash", "Glob", "Grep", "TodoWrite"],
             permission_mode="acceptEdits",
@@ -305,12 +319,23 @@ async def execute_implement(
     db_session: Optional[AsyncSession] = None,
 ) -> PlanResult:
     """Execute /implement command with the spec file path."""
-    # Obter diretório do projeto atual se houver
-    from .project_manager import project_manager as global_project_manager
+    # Obter diretório do projeto atual do banco de dados
+    from .database import async_session_maker
+    from .models.project import ActiveProject
+    from sqlalchemy import select
 
-    if global_project_manager and global_project_manager.current_project:
-        cwd = global_project_manager.get_working_directory()
-        print(f"[Agent] Using project directory: {cwd}")
+    print(f"[Agent] Initial cwd parameter: {cwd}")
+
+    async with async_session_maker() as session:
+        result = await session.execute(
+            select(ActiveProject).order_by(ActiveProject.loaded_at.desc()).limit(1)
+        )
+        active_project = result.scalar_one_or_none()
+        if active_project:
+            cwd = active_project.path
+            print(f"[Agent] Found active project, using project directory: {cwd}")
+        else:
+            print(f"[Agent] No active project found, using default cwd: {cwd}")
 
     # Mapear nome de modelo para valor do SDK
     model_map = {
@@ -465,12 +490,23 @@ async def execute_test_implementation(
     images: Optional[list] = None,
 ) -> PlanResult:
     """Execute /test-implementation command with the spec file path."""
-    # Obter diretório do projeto atual se houver
-    from .project_manager import project_manager as global_project_manager
+    # Obter diretório do projeto atual do banco de dados
+    from .database import async_session_maker
+    from .models.project import ActiveProject
+    from sqlalchemy import select
 
-    if global_project_manager and global_project_manager.current_project:
-        cwd = global_project_manager.get_working_directory()
-        print(f"[Agent] Using project directory: {cwd}")
+    print(f"[Agent] Initial cwd parameter: {cwd}")
+
+    async with async_session_maker() as session:
+        result = await session.execute(
+            select(ActiveProject).order_by(ActiveProject.loaded_at.desc()).limit(1)
+        )
+        active_project = result.scalar_one_or_none()
+        if active_project:
+            cwd = active_project.path
+            print(f"[Agent] Found active project, using project directory: {cwd}")
+        else:
+            print(f"[Agent] No active project found, using default cwd: {cwd}")
 
     # Mapear nome de modelo para valor do SDK
     model_map = {
@@ -605,12 +641,23 @@ async def execute_review(
     images: Optional[list] = None,
 ) -> PlanResult:
     """Execute /review command with the spec file path."""
-    # Obter diretório do projeto atual se houver
-    from .project_manager import project_manager as global_project_manager
+    # Obter diretório do projeto atual do banco de dados
+    from .database import async_session_maker
+    from .models.project import ActiveProject
+    from sqlalchemy import select
 
-    if global_project_manager and global_project_manager.current_project:
-        cwd = global_project_manager.get_working_directory()
-        print(f"[Agent] Using project directory: {cwd}")
+    print(f"[Agent] Initial cwd parameter: {cwd}")
+
+    async with async_session_maker() as session:
+        result = await session.execute(
+            select(ActiveProject).order_by(ActiveProject.loaded_at.desc()).limit(1)
+        )
+        active_project = result.scalar_one_or_none()
+        if active_project:
+            cwd = active_project.path
+            print(f"[Agent] Found active project, using project directory: {cwd}")
+        else:
+            print(f"[Agent] No active project found, using default cwd: {cwd}")
 
     # Mapear nome de modelo para valor do SDK
     model_map = {

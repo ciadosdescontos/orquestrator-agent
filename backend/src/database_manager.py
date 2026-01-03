@@ -1,12 +1,17 @@
 """Database manager for multi-project database isolation."""
 
 import hashlib
+import os
+import shutil
 from pathlib import Path
 from typing import Dict, Optional, Any
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, AsyncEngine
 from sqlalchemy.orm import sessionmaker
+import logging
 
 from .database import Base
+
+logger = logging.getLogger(__name__)
 
 
 class DatabaseManager:
@@ -72,8 +77,28 @@ class DatabaseManager:
         Returns:
             Project ID
         """
+        # Normalize the path
+        project_path = os.path.abspath(project_path)
         project_id = self.get_project_id(project_path)
-        db_path = self.get_database_path(project_id)
+
+        # NOVO: Create database inside the .claude folder of the project
+        claude_dir = os.path.join(project_path, '.claude')
+
+        # Ensure .claude folder exists
+        if not os.path.exists(claude_dir):
+            os.makedirs(claude_dir)
+            logger.info(f"Created .claude directory at {claude_dir}")
+
+        # Define database path in project
+        db_path = os.path.join(claude_dir, 'database.db')
+
+        # Check if there's a legacy database in .project_data (compatibility)
+        legacy_db_path = self.get_database_path(project_id)
+
+        # If legacy database exists and new one doesn't, copy it
+        if os.path.exists(legacy_db_path) and not os.path.exists(db_path):
+            shutil.copy2(legacy_db_path, db_path)
+            logger.info(f"Migrated database from {legacy_db_path} to {db_path}")
 
         if project_id not in self.engines:
             # Create new engine for this project
@@ -88,9 +113,21 @@ class DatabaseManager:
             self.engines[project_id] = engine
             self.sessions[project_id] = async_session
 
+            # Store additional metadata
+            if not hasattr(self, 'project_metadata'):
+                self.project_metadata = {}
+
+            self.project_metadata[project_id] = {
+                'path': project_path,
+                'db_path': db_path
+            }
+
             # Create tables if new database
             async with engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
+
+            logger.info(f"Initialized database for project at {project_path}")
+            logger.info(f"Database location: {db_path}")
 
         self.current_project_id = project_id
         return project_id
@@ -142,6 +179,43 @@ class DatabaseManager:
         if not self._history_session:
             raise RuntimeError("History database not initialized")
         return self._history_session
+
+    def get_project_database_info(self, project_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """
+        Get database information for a project.
+
+        Args:
+            project_path: Path to the project (optional, uses current if not provided)
+
+        Returns:
+            Dictionary with database information or None if project not found
+        """
+        if project_path:
+            project_id = self.get_project_id(os.path.abspath(project_path))
+        else:
+            project_id = self.current_project_id
+
+        if not project_id:
+            return None
+
+        # Check if we have metadata for this project
+        if hasattr(self, 'project_metadata') and project_id in self.project_metadata:
+            metadata = self.project_metadata[project_id]
+            return {
+                'database_path': metadata.get('db_path'),
+                'project_path': metadata.get('path'),
+                'is_active': project_id == self.current_project_id
+            }
+
+        return None
+
+    def reset(self):
+        """
+        Reset database manager to initial state (no active project).
+        This should be called when returning to root project.
+        """
+        logger.info("[DatabaseManager] Resetting to root project (no active project)")
+        self.current_project_id = None
 
     async def close_all(self):
         """Close all database connections."""

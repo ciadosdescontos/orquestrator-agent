@@ -17,6 +17,8 @@ class ActiveExecution(BaseModel):
     command: Optional[str] = None
     startedAt: Optional[str] = Field(None, alias="startedAt")
     completedAt: Optional[str] = Field(None, alias="completedAt")
+    workflowStage: Optional[str] = Field(None, alias="workflowStage")
+    workflowError: Optional[str] = Field(None, alias="workflowError")
 
     class Config:
         populate_by_name = True

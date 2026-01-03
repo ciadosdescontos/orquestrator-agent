@@ -98,6 +98,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .header {
@@ -109,6 +110,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  /* Adicionar z-index explícito para o header */
+  z-index: 100;
+  /* Garantir que não interfira com modais */
+  isolation: isolate;
 }
 
 .header::before {
@@ -138,12 +143,16 @@ body {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  /* Garantir que dropdowns fiquem acima do header mas abaixo de modais */
+  position: relative;
+  z-index: 110;
 }
 
 .main {
   flex: 1;
   padding: var(--space-6) var(--space-8);
   overflow-x: auto;
+  transition: margin-right var(--duration-normal) var(--ease-out);
 }
 
 /* Scrollbar Styling */

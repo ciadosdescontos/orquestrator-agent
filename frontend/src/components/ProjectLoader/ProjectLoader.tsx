@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Project } from '../../types';
-import { loadProject } from '../../api/projects';
+import { loadProject, clearAllProjects } from '../../api/projects';
 import styles from './ProjectLoader.module.css';
-import { FolderOpen, X, Check, AlertCircle } from 'lucide-react';
+import { FolderOpen, X, Check, AlertCircle, LogOut, CheckCircle2 } from 'lucide-react';
 
 interface ProjectLoaderProps {
   currentProject: Project | null;
@@ -70,6 +70,38 @@ export function ProjectLoader({ currentProject, onProjectLoad }: ProjectLoaderPr
     setIsModalOpen(false);
     setProjectPath('');
     setError(null);
+  };
+
+  const handleUnloadProject = async () => {
+    if (!currentProject) return;
+
+    const confirmUnload = window.confirm(
+      `Deseja sair do projeto "${currentProject.name}"?\n\n` +
+      'Você voltará para o projeto raiz (orquestrator-agent).'
+    );
+
+    if (!confirmUnload) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await clearAllProjects();
+      onProjectLoad(null as any); // Volta para null (projeto raiz)
+      setError(null);
+
+      // Recarregar a página para limpar os cards do projeto externo
+      window.location.reload();
+    } catch (err) {
+      console.error('Erro ao sair do projeto:', err);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Erro desconhecido ao sair do projeto');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Focus trap quando modal abre
@@ -195,22 +227,41 @@ export function ProjectLoader({ currentProject, onProjectLoad }: ProjectLoaderPr
 
   return (
     <>
-      <button
-        className={styles.loadButton}
-        onClick={() => setIsModalOpen(true)}
-        title="Carregar projeto externo"
-        aria-label="Abrir modal de carregamento de projeto"
-      >
-        <FolderOpen size={20} />
-        <span>
-          Load Project
-          {currentProject && (
-            <span className={styles.currentProject}>
-              ({currentProject.name})
-            </span>
+      <div className={styles.buttonGroup}>
+        <button
+          className={`${styles.loadButton} ${currentProject ? styles.projectLoaded : ''}`}
+          onClick={() => setIsModalOpen(true)}
+          title={currentProject ? `Projeto ativo: ${currentProject.path}` : "Carregar projeto externo"}
+          aria-label="Abrir modal de carregamento de projeto"
+        >
+          {currentProject ? (
+            <>
+              <CheckCircle2 size={20} className={styles.loadedIcon} />
+              <span className={styles.projectInfo}>
+                <span className={styles.projectLabel}>Projeto Ativo</span>
+                <span className={styles.projectName}>{currentProject.name}</span>
+              </span>
+            </>
+          ) : (
+            <>
+              <FolderOpen size={20} />
+              <span>Load Project</span>
+            </>
           )}
-        </span>
-      </button>
+        </button>
+
+        {currentProject && (
+          <button
+            className={styles.unloadButton}
+            onClick={handleUnloadProject}
+            disabled={isLoading}
+            title="Sair do projeto atual"
+            aria-label="Sair do projeto atual"
+          >
+            <LogOut size={18} />
+          </button>
+        )}
+      </div>
 
       {/* Renderizar modal via Portal para garantir z-index correto */}
       {modalContent && createPortal(

@@ -23,15 +23,23 @@ from .execution import (
     HealthResponse,
     LogsResponse,
 )
+from pydantic import BaseModel
 from .routes.cards import router as cards_router
 from .routes.images import router as images_router
 from .routes.projects import router as projects_router
+from .routes.chat import router as chat_router
 from .database import get_db, async_session_maker
 from .repositories.card_repository import CardRepository
 
 # Import models to register them with SQLAlchemy
 from .models.card import Card  # noqa: F401
 from .models.project import ActiveProject  # noqa: F401
+
+
+# Schema for workflow state update
+class WorkflowStateUpdate(BaseModel):
+    stage: str
+    error: Optional[str] = None
 
 
 @asynccontextmanager
@@ -66,6 +74,7 @@ app.add_middleware(
 app.include_router(cards_router)
 app.include_router(images_router)
 app.include_router(projects_router)
+app.include_router(chat_router)
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -353,8 +362,7 @@ async def execute_review_endpoint(request: ExecuteImplementRequest):
 @app.patch("/api/cards/{card_id}/workflow-state")
 async def update_workflow_state(
     card_id: str,
-    stage: str,
-    error: Optional[str] = None,
+    state: WorkflowStateUpdate,
     db: AsyncSession = Depends(get_db)
 ):
     """Atualiza o estado do workflow para um card"""
@@ -376,13 +384,13 @@ async def update_workflow_state(
         update(Execution)
         .where(Execution.id == execution.id)
         .values(
-            workflow_stage=stage,
-            workflow_error=error
+            workflow_stage=state.stage,
+            workflow_error=state.error
         )
     )
     await db.commit()
 
-    return {"success": True, "stage": stage}
+    return {"success": True, "stage": state.stage}
 
 
 @app.get("/api/logs/{card_id}", response_model=LogsResponse)
@@ -430,6 +438,10 @@ def main():
     print("  - GET  /api/images/:id")
     print("  - DELETE /api/images/:id")
     print("  - POST /api/images/cleanup")
+    print("  - POST /api/chat/sessions")
+    print("  - GET  /api/chat/sessions/:id")
+    print("  - DELETE /api/chat/sessions/:id")
+    print("  - WS   /api/chat/ws/:sessionId")
 
     uvicorn.run(app, host="0.0.0.0", port=port)
 

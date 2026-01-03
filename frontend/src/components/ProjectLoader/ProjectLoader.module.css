@@ -1,8 +1,16 @@
 /* Sistema de z-index em camadas */
 :root {
-  --z-modal-backdrop: 9998;
-  --z-modal-content: 9999;
-  --z-modal-tooltip: 10000;
+  /* Aumentar valores de z-index para garantir visibilidade */
+  --z-modal-backdrop: 100000;
+  --z-modal-content: 100001;
+  --z-modal-tooltip: 100002;
+}
+
+/* === BUTTON GROUP === */
+.buttonGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* === BOTÃO PRINCIPAL === */
@@ -55,10 +63,103 @@
   z-index: 1;
 }
 
-.currentProject {
-  font-size: 12px;
-  opacity: 0.9;
-  margin-left: 4px;
+/* === ESTADO: PROJETO CARREGADO === */
+.projectLoaded {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.projectLoaded::before {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.projectLoaded:hover {
+  box-shadow:
+    0 10px 25px -5px rgba(16, 185, 129, 0.4),
+    0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.loadedIcon {
+  flex-shrink: 0;
+}
+
+.projectInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+}
+
+.projectLabel {
+  font-size: 10px;
+  opacity: 0.85;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.projectName {
+  font-size: 14px;
+  font-weight: 600;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* === BOTÃO DE SAIR DO PROJETO === */
+.unloadButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.unloadButton::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.unloadButton:hover:not(:disabled)::before {
+  opacity: 1;
+}
+
+.unloadButton:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow:
+    0 10px 25px -5px rgba(245, 158, 11, 0.4),
+    0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+.unloadButton:active:not(:disabled) {
+  transform: translateY(0) scale(1);
+}
+
+.unloadButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.unloadButton > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* === MODAL OVERLAY === */
@@ -68,13 +169,15 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: var(--z-modal-backdrop);
   animation: fadeIn 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  /* Adicionar para garantir que fique acima */
+  isolation: isolate;
 }
 
 /* === MODAL === */
@@ -92,6 +195,9 @@
   position: relative;
   z-index: var(--z-modal-content);
   overflow: visible;
+  /* Adicionar para criar novo contexto de empilhamento */
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 /* Dark mode support */

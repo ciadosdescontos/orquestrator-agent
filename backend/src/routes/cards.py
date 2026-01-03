@@ -40,10 +40,10 @@ async def get_all_cards(db: AsyncSession = Depends(get_db)):
         execution = result.first()
 
         if execution:
-            # Buscar detalhes da execução
+            # Buscar detalhes da execução incluindo workflow state
             exec_result = await db.execute(
                 text("""
-                    SELECT id, status, command, started_at, completed_at
+                    SELECT id, status, command, started_at, completed_at, workflow_stage, workflow_error
                     FROM executions
                     WHERE card_id = :card_id AND is_active = 1
                 """).params(card_id=card.id)
@@ -54,13 +54,17 @@ async def get_all_cards(db: AsyncSession = Depends(get_db)):
                 # started_at e completed_at podem vir como string ou datetime do SQLite
                 started_at = exec_data[3]
                 completed_at = exec_data[4]
+                workflow_stage = exec_data[5]
+                workflow_error = exec_data[6]
 
                 card_dict["activeExecution"] = ActiveExecution(
                     id=exec_data[0],
                     status=exec_data[1],
                     command=exec_data[2],
                     startedAt=started_at if isinstance(started_at, str) else (started_at.isoformat() if started_at else None),
-                    completedAt=completed_at if isinstance(completed_at, str) else (completed_at.isoformat() if completed_at else None)
+                    completedAt=completed_at if isinstance(completed_at, str) else (completed_at.isoformat() if completed_at else None),
+                    workflowStage=workflow_stage,
+                    workflowError=workflow_error
                 )
 
         cards_with_execution.append(CardResponse.model_validate(card_dict))

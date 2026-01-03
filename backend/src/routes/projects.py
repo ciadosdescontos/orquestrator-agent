@@ -149,22 +149,31 @@ async def get_current_project():
 @router.delete("/current")
 async def clear_current_project():
     """
-    Remove o projeto atual (volta para o padrão).
+    Remove o projeto atual e volta para o projeto raiz (sem criar database.db).
 
     Returns:
         Status da operação
     """
     try:
-        # Limpa do banco
+        # Limpa do banco (remove projetos ativos)
         async with async_session_maker() as session:
             await session.execute(delete(ActiveProject))
             await session.commit()
 
-        # Limpa do gerenciador
+        # Reseta o gerenciador para voltar ao root_path
         manager = get_project_manager()
         manager.reset()
 
-        return {"success": True, "message": "Projeto removido com sucesso"}
+        # Reseta o database manager para voltar ao database raiz (auth.db)
+        from src.database_manager import db_manager
+        db_manager.reset()
+
+        # Retorna sucesso sem carregar projeto raiz
+        # (o projeto raiz usa auth.db, não database.db)
+        return {
+            "success": True,
+            "message": "Voltou para o projeto raiz"
+        }
 
     except Exception as e:
         print(f"[ProjectsRoute] Error clearing project: {e}")
@@ -336,3 +345,37 @@ async def quick_switch_project(request: QuickSwitchRequest):
     except Exception as e:
         print(f"[ProjectsRoute] Error quick switching project: {e}")
         raise HTTPException(status_code=500, detail=f"Erro ao trocar projeto: {str(e)}")
+
+
+@router.get("/current/database-info")
+async def get_database_info():
+    """
+    Get information about the current project's database.
+
+    Returns:
+        Database path, project path, and storage mode
+    """
+    try:
+        from src.database_manager import db_manager
+
+        db_info = db_manager.get_project_database_info()
+        if not db_info:
+            raise HTTPException(
+                status_code=404,
+                detail="No active project"
+            )
+
+        return {
+            "database_path": db_info['database_path'],
+            "project_path": db_info['project_path'],
+            "is_active": db_info['is_active'],
+            "storage_mode": "project" if '.claude' in db_info['database_path'] else "centralized"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ProjectsRoute] Error getting database info: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error getting database info: {str(e)}"
+        )
