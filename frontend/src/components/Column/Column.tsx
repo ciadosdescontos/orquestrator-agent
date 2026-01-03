@@ -1,5 +1,5 @@
 import { useDroppable } from '@dnd-kit/core';
-import { Card as CardType, Column as ColumnType, ColumnId, ExecutionStatus, WorkflowStatus } from '../../types';
+import { Card as CardType, Column as ColumnType, ColumnId, ExecutionStatus, WorkflowStatus, ExecutionHistory } from '../../types';
 import { Card } from '../Card/Card';
 import { AddCard } from '../AddCard/AddCard';
 import styles from './Column.module.css';
@@ -15,9 +15,10 @@ interface ColumnProps {
   onRunWorkflow?: (card: CardType) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  fetchLogsHistory?: (cardId: string) => Promise<{ cardId: string; history: ExecutionHistory[] } | null>;
 }
 
-export function Column({ column, cards, onAddCard, onRemoveCard, onUpdateCard, getExecutionStatus, getWorkflowStatus, onRunWorkflow, isCollapsed, onToggleCollapse }: ColumnProps) {
+export function Column({ column, cards, onAddCard, onRemoveCard, onUpdateCard, getExecutionStatus, getWorkflowStatus, onRunWorkflow, isCollapsed, onToggleCollapse, fetchLogsHistory }: ColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
   });
@@ -56,6 +57,7 @@ export function Column({ column, cards, onAddCard, onRemoveCard, onUpdateCard, g
               executionStatus={getExecutionStatus?.(card.id)}
               workflowStatus={getWorkflowStatus?.(card.id)}
               onRunWorkflow={onRunWorkflow}
+              fetchLogsHistory={fetchLogsHistory}
             />
           ))}
         </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { Card as CardType, ExecutionStatus, WorkflowStatus } from '../../types';
+import { Card as CardType, ExecutionStatus, WorkflowStatus, ExecutionHistory } from '../../types';
 import { LogsModal } from '../LogsModal';
 import { CardEditModal } from '../CardEditModal';
 import { removeImage } from '../../utils/imageHandler';
@@ -15,12 +15,14 @@ interface CardProps {
   executionStatus?: ExecutionStatus;
   workflowStatus?: WorkflowStatus;
   onRunWorkflow?: (card: CardType) => void;
+  fetchLogsHistory?: (cardId: string) => Promise<{ cardId: string; history: ExecutionHistory[] } | null>;
 }
 
-export function Card({ card, onRemove, onUpdateCard, isDragging = false, executionStatus, workflowStatus, onRunWorkflow }: CardProps) {
+export function Card({ card, onRemove, onUpdateCard, isDragging = false, executionStatus, workflowStatus, onRunWorkflow, fetchLogsHistory }: CardProps) {
   const [isLogsOpen, setIsLogsOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [removingImageId, setRemovingImageId] = useState<string | null>(null);
+  const [logsHistory, setLogsHistory] = useState<ExecutionHistory[] | undefined>(undefined);
 
   // Card só é desabilitado se estiver ATIVAMENTE em execução
   // Permitir arrastar se: idle, completed, error, ou se a execução já terminou
@@ -219,8 +221,17 @@ export function Card({ card, onRemove, onUpdateCard, isDragging = false, executi
                     {hasLogs && (
                       <button
                         className={styles.viewLogsButton}
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation();
+
+                          // Buscar histórico completo antes de abrir o modal
+                          if (fetchLogsHistory) {
+                            const history = await fetchLogsHistory(card.id);
+                            if (history) {
+                              setLogsHistory(history.history);
+                            }
+                          }
+
                           setIsLogsOpen(true);
                         }}
                         aria-label="View execution logs"
@@ -346,6 +357,7 @@ export function Card({ card, onRemove, onUpdateCard, isDragging = false, executi
           logs={executionStatus.logs || []}
           startedAt={executionStatus.startedAt}
           completedAt={executionStatus.completedAt}
+          history={logsHistory}
         />
       )}
       {onUpdateCard && (

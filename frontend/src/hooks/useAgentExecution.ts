@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Card, ExecutionStatus, ExecutionLog } from "../types";
+import { Card, ExecutionStatus, ExecutionLog, CardExecutionHistory } from "../types";
 import { API_ENDPOINTS } from "../api/config";
 
 const POLLING_INTERVAL = 1500; // Poll every 1.5 seconds
@@ -77,6 +77,25 @@ export function useAgentExecution(initialExecutions?: Map<string, ExecutionStatu
       return null;
     } catch (error) {
       console.error(`[useAgentExecution] Failed to fetch logs for ${cardId}:`, error);
+      return null;
+    }
+  }, []);
+
+  // Function to fetch full execution history from API
+  const fetchLogsHistory = useCallback(async (cardId: string): Promise<CardExecutionHistory | null> => {
+    try {
+      const response = await fetch(`${API_ENDPOINTS.logs}/${cardId}/history`);
+      if (!response.ok) return null;
+      const data = await response.json();
+      if (data.success) {
+        return {
+          cardId: data.cardId,
+          history: data.history
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error(`[useAgentExecution] Failed to fetch logs history for ${cardId}:`, error);
       return null;
     }
   }, []);
@@ -611,5 +630,6 @@ export function useAgentExecution(initialExecutions?: Map<string, ExecutionStatu
     clearExecution,
     registerCompletionCallback,
     unregisterCompletionCallback,
+    fetchLogsHistory,
   };
 }

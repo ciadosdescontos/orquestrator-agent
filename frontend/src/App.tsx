@@ -24,7 +24,7 @@ function App() {
   const [initialWorkflowStatuses, setInitialWorkflowStatuses] = useState<Map<string, WorkflowStatus> | undefined>();
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const dragStartColumnRef = useRef<ColumnId | null>(null);
-  const { executePlan, executeImplement, executeTest, executeReview, getExecutionStatus, registerCompletionCallback, executions } = useAgentExecution(initialExecutions);
+  const { executePlan, executeImplement, executeTest, executeReview, getExecutionStatus, registerCompletionCallback, executions, fetchLogsHistory } = useAgentExecution(initialExecutions);
   const { state: chatState, sendMessage, toggleChat, closeChat } = useChat();
 
   // Define moveCard and updateCardSpecPath BEFORE useWorkflowAutomation
@@ -404,6 +404,7 @@ function App() {
             onToggleArchivedCollapse={() => setIsArchivedCollapsed(!isArchivedCollapsed)}
             isCanceladoCollapsed={isCanceladoCollapsed}
             onToggleCanceladoCollapse={() => setIsCanceladoCollapsed(!isCanceladoCollapsed)}
+            fetchLogsHistory={fetchLogsHistory}
           />
           <DragOverlay>
             {activeCard ? (

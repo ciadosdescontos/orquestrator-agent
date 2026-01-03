@@ -420,6 +420,19 @@ async def get_logs_endpoint(card_id: str, db: AsyncSession = Depends(get_db)):
     )
 
 
+@app.get("/api/logs/{card_id}/history")
+async def get_logs_history_endpoint(card_id: str, db: AsyncSession = Depends(get_db)):
+    """Get full execution history for a card"""
+    repo = ExecutionRepository(db)
+    history = await repo.get_execution_history(card_id)
+
+    return {
+        "success": True,
+        "cardId": card_id,
+        "history": history
+    }
+
+
 def main():
     """Run the server."""
     import uvicorn

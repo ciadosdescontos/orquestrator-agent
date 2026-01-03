@@ -320,12 +320,17 @@ export function useWorkflowAutomation({
   useEffect(() => {
     if (!initialStatuses || initialStatuses.size === 0) return;
     if (cards.length === 0) return;
+    // Wait for executions to be populated before processing recovery
+    if (executions.size === 0) {
+      console.log(`[WorkflowRecovery] Waiting for executions to be populated...`);
+      return;
+    }
 
     // Only run recovery once to prevent duplicates
     if (recoveryProcessedRef.current) return;
     recoveryProcessedRef.current = true;
 
-    console.log(`[WorkflowRecovery] Starting recovery with ${initialStatuses.size} statuses`);
+    console.log(`[WorkflowRecovery] Starting recovery with ${initialStatuses.size} statuses, ${executions.size} executions`);
 
     const activeStages: WorkflowStage[] = ['planning', 'implementing', 'testing', 'reviewing'];
 

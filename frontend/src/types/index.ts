@@ -135,3 +135,20 @@ export interface CardDraft {
   savedAt: string; // ISO timestamp
   version: number; // Para controle de versão do draft
 }
+
+// Tipos para histórico de execuções
+export interface ExecutionHistory {
+  executionId: string;
+  command: string;
+  title: string;
+  status: 'idle' | 'running' | 'success' | 'error';
+  workflowStage?: string;
+  startedAt: string;
+  completedAt?: string;
+  logs: ExecutionLog[];
+}
+
+export interface CardExecutionHistory {
+  cardId: string;
+  history: ExecutionHistory[];
+}
