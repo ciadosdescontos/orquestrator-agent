@@ -1,4 +1,5 @@
 import { ModuleType } from '../../layouts/WorkspaceLayout';
+import { ThemeToggle } from '../ThemeToggle/ThemeToggle';
 import styles from './Sidebar.module.css';
 
 interface NavigationItem {
@@ -73,6 +74,7 @@ const Sidebar = ({ currentModule, onNavigate }: SidebarProps) => {
       </nav>
 
       <div className={styles.footer}>
+        <ThemeToggle />
         <div className={styles.footerInfo}>
           <span className={styles.footerLabel}>Orquestrator Agent</span>
           <span className={styles.footerVersion}>v1.0.0</span>
