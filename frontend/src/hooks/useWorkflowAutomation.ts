@@ -239,10 +239,21 @@ export function useWorkflowAutomation({
             break;
           }
 
-          // Complete workflow
-          await cardsApi.moveCard(card.id, 'done');
-          onCardMove(card.id, 'done');
-          await updateStatus('completed', 'done');
+          // Tentar fazer merge antes de mover para done
+          const mergeResult1 = await handleCompletedReview(card.id);
+
+          if (mergeResult1.success || !card.branchName) {
+            // Merge bem-sucedido ou card nao tem branch
+            await cardsApi.moveCard(card.id, 'done');
+            onCardMove(card.id, 'done');
+            await updateStatus('completed', 'done');
+          } else if (mergeResult1.status === 'resolving') {
+            // IA esta resolvendo conflitos - manter em review
+            await updateStatus('reviewing', 'review');
+          } else {
+            // Merge falhou
+            await updateStatus('error', 'review', mergeResult1.error || 'Merge failed');
+          }
           break;
         }
 
@@ -273,10 +284,21 @@ export function useWorkflowAutomation({
             break;
           }
 
-          // Complete workflow
-          await cardsApi.moveCard(card.id, 'done');
-          onCardMove(card.id, 'done');
-          await updateStatus('completed', 'done');
+          // Tentar fazer merge antes de mover para done
+          const mergeResult2 = await handleCompletedReview(card.id);
+
+          if (mergeResult2.success || !card.branchName) {
+            // Merge bem-sucedido ou card nao tem branch
+            await cardsApi.moveCard(card.id, 'done');
+            onCardMove(card.id, 'done');
+            await updateStatus('completed', 'done');
+          } else if (mergeResult2.status === 'resolving') {
+            // IA esta resolvendo conflitos - manter em review
+            await updateStatus('reviewing', 'review');
+          } else {
+            // Merge falhou
+            await updateStatus('error', 'review', mergeResult2.error || 'Merge failed');
+          }
           break;
         }
 
@@ -294,18 +316,40 @@ export function useWorkflowAutomation({
             break;
           }
 
-          // Complete workflow
-          await cardsApi.moveCard(card.id, 'done');
-          onCardMove(card.id, 'done');
-          await updateStatus('completed', 'done');
+          // Tentar fazer merge antes de mover para done
+          const mergeResult3 = await handleCompletedReview(card.id);
+
+          if (mergeResult3.success || !card.branchName) {
+            // Merge bem-sucedido ou card nao tem branch
+            await cardsApi.moveCard(card.id, 'done');
+            onCardMove(card.id, 'done');
+            await updateStatus('completed', 'done');
+          } else if (mergeResult3.status === 'resolving') {
+            // IA esta resolvendo conflitos - manter em review
+            await updateStatus('reviewing', 'review');
+          } else {
+            // Merge falhou
+            await updateStatus('error', 'review', mergeResult3.error || 'Merge failed');
+          }
           break;
         }
 
         case 'reviewing': {
-          // Review completed → move to done
-          await cardsApi.moveCard(card.id, 'done');
-          onCardMove(card.id, 'done');
-          await updateStatus('completed', 'done');
+          // Review completed → tentar fazer merge antes de mover para done
+          const mergeResult4 = await handleCompletedReview(card.id);
+
+          if (mergeResult4.success || !card.branchName) {
+            // Merge bem-sucedido ou card nao tem branch
+            await cardsApi.moveCard(card.id, 'done');
+            onCardMove(card.id, 'done');
+            await updateStatus('completed', 'done');
+          } else if (mergeResult4.status === 'resolving') {
+            // IA esta resolvendo conflitos - manter em review
+            await updateStatus('reviewing', 'review');
+          } else {
+            // Merge falhou
+            await updateStatus('error', 'review', mergeResult4.error || 'Merge failed');
+          }
           break;
         }
       }
