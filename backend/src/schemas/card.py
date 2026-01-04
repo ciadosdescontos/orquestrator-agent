@@ -6,7 +6,7 @@ from typing import Dict, List, Literal, Optional
 from pydantic import BaseModel, Field
 
 
-ColumnId = Literal["backlog", "plan", "in-progress", "test", "review", "done", "archived", "cancelado"]
+ColumnId = Literal["backlog", "plan", "implement", "test", "review", "done", "archived", "cancelado"]
 ModelType = Literal["opus-4.5", "sonnet-4.5", "haiku-4.5"]
 
 

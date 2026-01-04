@@ -118,7 +118,7 @@ export function Card({ card, onRemove, onUpdateCard, isDragging = false, executi
         success: 'Plan completed',
         error: 'Plan failed',
       },
-      'in-progress': {
+      implement: {
         running: 'Executing /implement...',
         success: 'Implementation completed',
         error: 'Implementation failed',

@@ -89,10 +89,10 @@ export function useWorkflowAutomation({
         card.specPath = planResult.specPath;
       }
 
-      // Etapa 2: Implement (plan → in-progress)
-      await cardsApi.moveCard(card.id, 'in-progress');
-      onCardMove(card.id, 'in-progress');
-      await updateStatus('implementing', 'in-progress');
+      // Etapa 2: Implement (plan → implement)
+      await cardsApi.moveCard(card.id, 'implement');
+      onCardMove(card.id, 'implement');
+      await updateStatus('implementing', 'implement');
 
       const implementResult = await executeImplement(card);
       if (!implementResult.success) {
@@ -103,17 +103,17 @@ export function useWorkflowAutomation({
         return;
       }
 
-      // Etapa 3: Test (in-progress → test)
+      // Etapa 3: Test (implement → test)
       await cardsApi.moveCard(card.id, 'test');
       onCardMove(card.id, 'test');
       await updateStatus('testing', 'test');
 
       const testResult = await executeTest(card);
       if (!testResult.success) {
-        // Rollback: voltar para in-progress
-        await cardsApi.moveCard(card.id, 'in-progress');
-        onCardMove(card.id, 'in-progress');
-        await updateStatus('error', 'in-progress', testResult.error);
+        // Rollback: voltar para implement
+        await cardsApi.moveCard(card.id, 'implement');
+        onCardMove(card.id, 'implement');
+        await updateStatus('error', 'implement', testResult.error);
         return;
       }
 
@@ -188,9 +188,9 @@ export function useWorkflowAutomation({
       switch (completedStage) {
         case 'planning': {
           // Planning completed → execute implement
-          await cardsApi.moveCard(card.id, 'in-progress');
-          onCardMove(card.id, 'in-progress');
-          await updateStatus('implementing', 'in-progress');
+          await cardsApi.moveCard(card.id, 'implement');
+          onCardMove(card.id, 'implement');
+          await updateStatus('implementing', 'implement');
 
           const implementResult = await executeImplement(card);
           if (!implementResult.success) {
@@ -207,9 +207,9 @@ export function useWorkflowAutomation({
 
           const testResult = await executeTest(card);
           if (!testResult.success) {
-            await cardsApi.moveCard(card.id, 'in-progress');
-            onCardMove(card.id, 'in-progress');
-            await updateStatus('error', 'in-progress', testResult.error);
+            await cardsApi.moveCard(card.id, 'implement');
+            onCardMove(card.id, 'implement');
+            await updateStatus('error', 'implement', testResult.error);
             break;
           }
 
@@ -241,9 +241,9 @@ export function useWorkflowAutomation({
 
           const testResult = await executeTest(card);
           if (!testResult.success) {
-            await cardsApi.moveCard(card.id, 'in-progress');
-            onCardMove(card.id, 'in-progress');
-            await updateStatus('error', 'in-progress', testResult.error);
+            await cardsApi.moveCard(card.id, 'implement');
+            onCardMove(card.id, 'implement');
+            await updateStatus('error', 'implement', testResult.error);
             break;
           }
 
@@ -310,7 +310,7 @@ export function useWorkflowAutomation({
     switch (stage) {
       case 'planning': return 'backlog';
       case 'implementing': return 'plan';
-      case 'testing': return 'in-progress';
+      case 'testing': return 'implement';
       case 'reviewing': return 'test';
       default: return 'backlog';
     }
