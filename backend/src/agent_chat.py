@@ -25,6 +25,7 @@ class ClaudeAgentChat:
     async def stream_response(
         self,
         messages: list[dict],
+        model: str = "claude-3-sonnet",
         system_prompt: str | None = None
     ) -> AsyncGenerator[str, None]:
         """
@@ -32,6 +33,7 @@ class ClaudeAgentChat:
 
         Args:
             messages: List of conversation messages in format [{"role": "user/assistant", "content": "..."}]
+            model: AI model to use (e.g., "claude-3-sonnet", "claude-3-opus", "gpt-4-turbo")
             system_prompt: Optional system prompt (not used with /question, but kept for compatibility)
 
         Yields:
@@ -77,13 +79,21 @@ class ClaudeAgentChat:
                 if active_project:
                     cwd = Path(active_project.path)
 
+            # Map model IDs to agent SDK model names
+            model_mapping = {
+                "claude-3-sonnet": "sonnet",
+                "claude-3-opus": "opus",
+                "gpt-4-turbo": "sonnet",  # Fallback to sonnet for unsupported models
+            }
+            agent_model = model_mapping.get(model, "sonnet")
+
             # Configure agent options for chat
             options = ClaudeAgentOptions(
                 cwd=cwd,
                 setting_sources=["user", "project"],  # Load commands from .claude/commands/
                 allowed_tools=["Read", "Bash", "Glob", "Grep", "Skill"],
                 permission_mode="bypassPermissions",  # Auto-approve read operations
-                model="sonnet",  # Use sonnet for faster responses
+                model=agent_model,  # Use selected model
             )
 
             # Stream response from Claude Agent SDK
@@ -108,6 +118,7 @@ class ClaudeAgentChat:
     async def get_single_response(
         self,
         messages: list[dict],
+        model: str = "claude-3-sonnet",
         system_prompt: str | None = None
     ) -> str:
         """
@@ -115,6 +126,7 @@ class ClaudeAgentChat:
 
         Args:
             messages: List of conversation messages
+            model: AI model to use
             system_prompt: Optional system prompt
 
         Returns:
@@ -122,7 +134,7 @@ class ClaudeAgentChat:
         """
         try:
             full_response = ""
-            async for chunk in self.stream_response(messages, system_prompt):
+            async for chunk in self.stream_response(messages, model, system_prompt):
                 full_response += chunk
             return full_response
 

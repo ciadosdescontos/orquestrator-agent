@@ -4,6 +4,7 @@ export interface Message {
   content: string;
   timestamp: string;
   isStreaming?: boolean;
+  model?: string;
 }
 
 export interface ChatSession {
@@ -11,6 +12,7 @@ export interface ChatSession {
   messages: Message[];
   createdAt: string;
   updatedAt: string;
+  model?: string;
 }
 
 export interface ChatState {
@@ -18,4 +20,6 @@ export interface ChatState {
   session: ChatSession | null;
   isLoading: boolean;
   error: string | null;
+  selectedModel: string;
+  unreadCount: number;
 }

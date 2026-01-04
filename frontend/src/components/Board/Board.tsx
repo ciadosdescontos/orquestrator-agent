@@ -1,4 +1,4 @@
-import { Card as CardType, Column as ColumnType, ColumnId, ExecutionStatus, WorkflowStatus } from '../../types';
+import { Card as CardType, Column as ColumnType, ColumnId, ExecutionStatus, WorkflowStatus, ExecutionHistory } from '../../types';
 import { Column } from '../Column/Column';
 import styles from './Board.module.css';
 
@@ -15,9 +15,10 @@ interface BoardProps {
   onToggleArchivedCollapse?: () => void;
   isCanceladoCollapsed?: boolean;
   onToggleCanceladoCollapse?: () => void;
+  fetchLogsHistory?: (cardId: string) => Promise<{ cardId: string; history: ExecutionHistory[] } | null>;
 }
 
-export function Board({ columns, cards, onAddCard, onRemoveCard, onUpdateCard, getExecutionStatus, getWorkflowStatus, onRunWorkflow, isArchivedCollapsed, onToggleArchivedCollapse, isCanceladoCollapsed, onToggleCanceladoCollapse }: BoardProps) {
+export function Board({ columns, cards, onAddCard, onRemoveCard, onUpdateCard, getExecutionStatus, getWorkflowStatus, onRunWorkflow, isArchivedCollapsed, onToggleArchivedCollapse, isCanceladoCollapsed, onToggleCanceladoCollapse, fetchLogsHistory }: BoardProps) {
   return (
     <div className={styles.board}>
       {columns.map(column => {
@@ -45,6 +46,7 @@ export function Board({ columns, cards, onAddCard, onRemoveCard, onUpdateCard, g
               isCancelado ? onToggleCanceladoCollapse :
               undefined
             }
+            fetchLogsHistory={fetchLogsHistory}
           />
         );
       })}

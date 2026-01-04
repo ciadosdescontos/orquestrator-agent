@@ -13,8 +13,8 @@ from ..schemas.card import CardCreate, CardUpdate, ColumnId
 # Transições permitidas no SDLC
 ALLOWED_TRANSITIONS: dict[str, list[str]] = {
     "backlog": ["plan", "cancelado"],
-    "plan": ["in-progress", "cancelado"],
-    "in-progress": ["test", "cancelado"],
+    "plan": ["implement", "cancelado"],
+    "implement": ["test", "cancelado"],
     "test": ["review", "cancelado"],
     "review": ["done", "cancelado"],
     "done": ["archived", "cancelado"],

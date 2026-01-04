@@ -1,6 +1,6 @@
 import { useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { ExecutionLog } from '../../types';
+import { ExecutionLog, ExecutionHistory } from '../../types';
 import styles from './LogsModal.module.css';
 
 interface LogsModalProps {
@@ -11,6 +11,7 @@ interface LogsModalProps {
   logs: ExecutionLog[];
   startedAt?: string;
   completedAt?: string;
+  history?: ExecutionHistory[]; // Histórico completo de execuções
 }
 
 export function LogsModal({
@@ -20,7 +21,8 @@ export function LogsModal({
   status,
   logs,
   startedAt,
-  completedAt
+  completedAt,
+  history
 }: LogsModalProps) {
   const logsEndRef = useRef<HTMLDivElement>(null);
   const scrollPositionRef = useRef(0);
@@ -261,11 +263,62 @@ export function LogsModal({
 
         {/* Logs Container */}
         <div className={styles.logsContainer}>
-          {logs.length === 0 ? (
+          {history && history.length > 0 ? (
+            // Renderizar histórico completo agrupado por execução
+            <div className={styles.logGroups}>
+              {history.map((execution) => {
+                const execDuration = execution.completedAt
+                  ? new Date(execution.completedAt).getTime() - new Date(execution.startedAt).getTime()
+                  : undefined;
+
+                return (
+                  <div key={execution.executionId} className={styles.executionGroup}>
+                    <div className={styles.executionHeader}>
+                      <div className={styles.executionHeaderLeft}>
+                        <span className={styles.executionCommand}>{execution.command || execution.title}</span>
+                        {execution.workflowStage && (
+                          <span className={styles.executionStage}>{execution.workflowStage}</span>
+                        )}
+                      </div>
+                      <div className={styles.executionHeaderRight}>
+                        <span className={`${styles.executionStatus} ${styles[`status${execution.status.charAt(0).toUpperCase() + execution.status.slice(1)}`]}`}>
+                          {execution.status === 'running' ? 'Executando' :
+                           execution.status === 'success' ? 'Concluído' :
+                           execution.status === 'error' ? 'Erro' : 'Aguardando'}
+                        </span>
+                        {execDuration !== undefined && (
+                          <span className={styles.executionDuration}>
+                            {formatDuration(execDuration)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className={styles.executionLogs}>
+                      {execution.logs.map((log, logIdx) => (
+                        <div key={logIdx} className={`${styles.logEntry} ${getLogTypeClass(log.type)}`}>
+                          <div className={styles.logEntryHeader}>
+                            <span className={styles.timestamp}>{formatTimestamp(log.timestamp)}</span>
+                            <span className={`${styles.logType} ${getLogTypeClass(log.type)}`}>
+                              {log.type.toUpperCase()}
+                            </span>
+                          </div>
+                          <div className={styles.logContent}>
+                            {formatLogContent(log.content)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={logsEndRef} />
+            </div>
+          ) : logs.length === 0 ? (
             <div className={styles.emptyState}>
               {status === 'running' ? 'Aguardando logs...' : 'Nenhum log disponível ainda...'}
             </div>
           ) : (
+            // Renderização para logs simples (sem histórico)
             <div className={styles.logGroups}>
               {logs.map((log, idx) => (
                 <div key={idx} className={`${styles.logEntry} ${getLogTypeClass(log.type)}`}>

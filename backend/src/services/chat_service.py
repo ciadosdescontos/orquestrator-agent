@@ -68,7 +68,8 @@ class ChatService:
     async def send_message(
         self,
         session_id: str,
-        message: str
+        message: str,
+        model: str = "claude-3-sonnet"
     ) -> AsyncGenerator[dict, None]:
         """
         Send a message and stream the response from Claude.
@@ -76,6 +77,7 @@ class ChatService:
         Args:
             session_id: The session ID
             message: The user's message
+            model: AI model to use for response
 
         Yields:
             dict: Stream chunks with type, content, and messageId
@@ -89,6 +91,7 @@ class ChatService:
             "role": "user",
             "content": message,
             "timestamp": datetime.now().isoformat(),
+            "model": model,
         }
         self.sessions[session_id].append(user_message)
 
@@ -103,9 +106,10 @@ class ChatService:
                 for msg in self.sessions[session_id]
             ]
 
-            # Stream response from Claude
+            # Stream response from Claude with selected model
             async for chunk in self.claude_agent.stream_response(
                 messages=claude_messages,
+                model=model,
                 system_prompt=DEFAULT_SYSTEM_PROMPT
             ):
                 assistant_content += chunk
@@ -122,6 +126,7 @@ class ChatService:
                 "role": "assistant",
                 "content": assistant_content,
                 "timestamp": datetime.now().isoformat(),
+                "model": model,
             }
             self.sessions[session_id].append(assistant_message)
 

@@ -27,38 +27,42 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
   return (
     <div className={styles.inputContainer}>
       <div className={styles.inputWrapper}>
-        <textarea
-          className={styles.textarea}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Type a message... (Shift+Enter for new line)"
-          disabled={disabled}
-          rows={1}
-        />
-        <button
-          className={styles.sendButton}
-          onClick={handleSend}
-          disabled={disabled || !message.trim()}
-          aria-label="Send message"
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        <div className={styles.innerWrapper}>
+          <textarea
+            className={styles.textarea}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type a message... (Shift+Enter for new line)"
+            disabled={disabled}
+            rows={1}
+          />
+          <button
+            className={styles.sendButton}
+            onClick={handleSend}
+            disabled={disabled || !message.trim()}
+            aria-label="Send message"
           >
-            <line x1="22" y1="2" x2="11" y2="13"></line>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-          </svg>
-        </button>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
       </div>
       <div className={styles.hint}>
-        Press Enter to send • Shift+Enter for new line
+        <span>Press <kbd>Enter</kbd> to send</span>
+        <span>•</span>
+        <span><kbd>Shift</kbd> + <kbd>Enter</kbd> for new line</span>
       </div>
     </div>
   );

@@ -25,6 +25,15 @@ class ExecutionRepository:
             .values(is_active=False)
         )
 
+        # Mapear comando para workflow stage correto
+        stage_map = {
+            "/plan": "planning",
+            "/implement": "implementing",
+            "/test-implementation": "testing",
+            "/review": "reviewing",
+        }
+        workflow_stage = stage_map.get(command, command.replace("/", ""))
+
         execution = Execution(
             id=str(uuid.uuid4()),
             card_id=card_id,
@@ -33,7 +42,7 @@ class ExecutionRepository:
             status=ExecutionStatus.RUNNING,
             started_at=datetime.utcnow(),
             is_active=True,
-            workflow_stage=command.replace("/", "")  # plan, implement, test, review
+            workflow_stage=workflow_stage
         )
 
         self.db.add(execution)
@@ -82,7 +91,8 @@ class ExecutionRepository:
         self,
         execution_id: str,
         status: ExecutionStatus,
-        result: Optional[str] = None
+        result: Optional[str] = None,
+        workflow_stage: Optional[str] = None
     ):
         """Atualiza status de uma execução"""
         values = {
@@ -92,6 +102,9 @@ class ExecutionRepository:
 
         if result:
             values["result"] = result
+
+        if workflow_stage:
+            values["workflow_stage"] = workflow_stage
 
         await self.db.execute(
             update(Execution)
@@ -156,3 +169,41 @@ class ExecutionRepository:
             execution_cache.set(card_id, result)
 
         return result
+
+    async def get_execution_history(self, card_id: str) -> List[dict]:
+        """Busca todas as execuções de um card com seus logs"""
+        result = await self.db.execute(
+            select(Execution)
+            .where(Execution.card_id == card_id)
+            .order_by(Execution.started_at.desc())
+        )
+        executions = result.scalars().all()
+
+        history = []
+        for execution in executions:
+            logs_result = await self.db.execute(
+                select(ExecutionLog)
+                .where(ExecutionLog.execution_id == execution.id)
+                .order_by(ExecutionLog.sequence)
+            )
+            logs = logs_result.scalars().all()
+
+            history.append({
+                "executionId": execution.id,
+                "command": execution.command,
+                "title": execution.title,
+                "status": execution.status.value,
+                "workflowStage": execution.workflow_stage,
+                "startedAt": execution.started_at.isoformat(),
+                "completedAt": execution.completed_at.isoformat() if execution.completed_at else None,
+                "logs": [
+                    {
+                        "timestamp": log.timestamp.isoformat(),
+                        "type": log.type,
+                        "content": log.content
+                    }
+                    for log in logs
+                ]
+            })
+
+        return history

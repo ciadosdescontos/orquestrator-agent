@@ -10,6 +10,8 @@ export function useChat() {
     session: null,
     isLoading: false,
     error: null,
+    selectedModel: 'claude-3-sonnet',
+    unreadCount: 0,
   });
 
   const ws = useRef<WebSocket | null>(null);
@@ -191,11 +193,12 @@ export function useChat() {
           JSON.stringify({
             type: 'message',
             content: content.trim(),
+            model: state.selectedModel,
           })
         );
       }
     },
-    [state.isLoading, connectWebSocket]
+    [state.isLoading, state.selectedModel, connectWebSocket]
   );
 
   const toggleChat = useCallback(() => {
@@ -212,6 +215,30 @@ export function useChat() {
     }));
   }, []);
 
+  const handleModelChange = useCallback((model: string) => {
+    // Reset session when model changes
+    setState((prev) => ({
+      ...prev,
+      selectedModel: model,
+      session: {
+        id: uuidv4(),
+        messages: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        model,
+      },
+    }));
+
+    // Close existing WebSocket connection
+    if (ws.current) {
+      ws.current.close();
+      ws.current = null;
+    }
+
+    // Update session ID for new WebSocket connection
+    sessionId.current = uuidv4();
+  }, []);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -226,5 +253,6 @@ export function useChat() {
     sendMessage,
     toggleChat,
     closeChat,
+    handleModelChange,
   };
 }

@@ -1,0 +1,77 @@
+.newTaskButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: linear-gradient(135deg,
+    var(--accent-cyan) 0%,
+    rgba(0, 212, 255, 0.8) 100%
+  );
+  color: var(--bg-deep);
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-out);
+  box-shadow: 0 2px 8px rgba(0, 212, 255, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.newTaskButton:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 4px 16px rgba(0, 212, 255, 0.4),
+    0 0 20px rgba(0, 212, 255, 0.2);
+}
+
+.newTaskButton:active {
+  transform: translateY(0);
+}
+
+.newTaskButton svg {
+  transition: transform var(--duration-fast) var(--ease-spring);
+}
+
+.newTaskButton:hover svg {
+  transform: rotate(90deg);
+}
+
+/* Shimmer effect */
+.newTaskButton::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 70%
+  );
+  transform: rotate(45deg) translate(-50%, -50%);
+  transition: all 0.6s;
+  opacity: 0;
+}
+
+.newTaskButton:hover::after {
+  animation: shimmer 0.6s ease;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: rotate(45deg) translate(-200%, -200%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(45deg) translate(200%, 200%);
+    opacity: 0;
+  }
+}

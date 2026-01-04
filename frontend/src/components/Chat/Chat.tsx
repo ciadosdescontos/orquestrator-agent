@@ -2,24 +2,25 @@ import { useEffect, useRef } from 'react';
 import { Message } from '../../types/chat';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
+import { ModelSelector } from './ModelSelector';
 import styles from './Chat.module.css';
 
 interface ChatProps {
-  isOpen: boolean;
-  onClose: () => void;
   messages: Message[];
   isLoading: boolean;
   error: string | null;
   onSendMessage: (content: string) => void;
+  selectedModel: string;
+  onModelChange: (model: string) => void;
 }
 
 export default function Chat({
-  isOpen,
-  onClose,
   messages,
   isLoading,
   error,
   onSendMessage,
+  selectedModel,
+  onModelChange,
 }: ChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -29,16 +30,14 @@ export default function Chat({
   }, [messages]);
 
   return (
-    <div className={`${styles.chatContainer} ${isOpen ? styles.open : ''}`}>
+    <div className={styles.chatContainer}>
       <div className={styles.chatHeader}>
         <h2 className={styles.chatTitle}>AI Assistant</h2>
-        <button
-          className={styles.closeButton}
-          onClick={onClose}
-          aria-label="Close chat"
-        >
-          ×
-        </button>
+        <ModelSelector
+          selectedModel={selectedModel}
+          onModelChange={onModelChange}
+          disabled={isLoading}
+        />
       </div>
 
       <div className={styles.messagesContainer}>

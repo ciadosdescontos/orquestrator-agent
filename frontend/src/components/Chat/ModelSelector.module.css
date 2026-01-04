@@ -1,0 +1,116 @@
+.modelSelector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px) saturate(180%);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.modelSelector:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border-hover);
+  box-shadow: 0 4px 16px rgba(0, 212, 255, 0.08);
+}
+
+.label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-1);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.select {
+  padding: var(--space-3) var(--space-4);
+  font-size: 0.95rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-out);
+  outline: none;
+  font-family: var(--font-body);
+  font-weight: 500;
+}
+
+.select:hover {
+  border-color: var(--accent-cyan);
+  background: var(--bg-surface);
+}
+
+.select:focus {
+  border-color: var(--accent-cyan);
+  box-shadow:
+    0 0 0 3px rgba(0, 212, 255, 0.15),
+    0 4px 12px rgba(0, 212, 255, 0.1);
+}
+
+.select:disabled {
+  background: var(--bg-elevated);
+  color: var(--text-dim);
+  cursor: not-allowed;
+  opacity: 0.5;
+  border-color: var(--border-subtle);
+}
+
+.modelInfo {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding-top: var(--space-1);
+}
+
+.provider {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  background: linear-gradient(135deg,
+    rgba(0, 212, 255, 0.1) 0%,
+    rgba(168, 85, 247, 0.08) 100%);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  text-transform: capitalize;
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+}
+
+.tokens {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 640px) {
+  .modelSelector {
+    padding: var(--space-3);
+  }
+
+  .select {
+    padding: var(--space-2) var(--space-3);
+    font-size: 0.875rem;
+  }
+
+  .modelInfo {
+    flex-direction: column;
+    gap: var(--space-2);
+    align-items: flex-start;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .modelSelector,
+  .select {
+    transition: none;
+  }
+}

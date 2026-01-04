@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Card, ExecutionStatus, ExecutionLog } from "../types";
+import { Card, ExecutionStatus, ExecutionLog, CardExecutionHistory } from "../types";
 import { API_ENDPOINTS } from "../api/config";
 
 const POLLING_INTERVAL = 1500; // Poll every 1.5 seconds
@@ -25,6 +25,10 @@ export function useAgentExecution(initialExecutions?: Map<string, ExecutionStatu
   const pollingIntervalsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   // Callbacks to be called when an execution completes (for workflow recovery)
   const completionCallbacksRef = useRef<Map<string, ExecutionCompletionCallback>>(new Map());
+  // Track executions that completed while waiting for callback registration
+  const pendingCompletionsRef = useRef<Map<string, ExecutionStatus>>(new Map());
+  // Track if initial load is done to prevent duplicate polling
+  const initialLoadDoneRef = useRef(false);
 
   // Cleanup polling intervals on unmount
   useEffect(() => {
@@ -36,7 +40,7 @@ export function useAgentExecution(initialExecutions?: Map<string, ExecutionStatu
 
   // Update executions state when initialExecutions becomes available
   useEffect(() => {
-    if (initialExecutions && initialExecutions.size > 0) {
+    if (initialExecutions && initialExecutions.size > 0 && !initialLoadDoneRef.current) {
       console.log(`[useAgentExecution] Loading ${initialExecutions.size} initial executions`);
       setExecutions(new Map(initialExecutions));
     }
@@ -44,14 +48,19 @@ export function useAgentExecution(initialExecutions?: Map<string, ExecutionStatu
 
   // Restore polling for running executions when initialExecutions becomes available
   useEffect(() => {
-    if (initialExecutions && initialExecutions.size > 0) {
+    if (initialExecutions && initialExecutions.size > 0 && !initialLoadDoneRef.current) {
+      initialLoadDoneRef.current = true;
       console.log(`[useAgentExecution] Restoring ${initialExecutions.size} executions`);
-      initialExecutions.forEach((execution, cardId) => {
-        if (execution.status === 'running') {
-          console.log(`[useAgentExecution] Restoring polling for card: ${cardId}`, execution);
-          startPolling(cardId);
-        }
-      });
+
+      // Small delay to allow callback registration from useWorkflowAutomation
+      setTimeout(() => {
+        initialExecutions.forEach((execution, cardId) => {
+          if (execution.status === 'running') {
+            console.log(`[useAgentExecution] Restoring polling for card: ${cardId}`, execution);
+            startPolling(cardId);
+          }
+        });
+      }, 100);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialExecutions]); // startPolling is stable, we only care about initialExecutions changing
@@ -72,12 +81,76 @@ export function useAgentExecution(initialExecutions?: Map<string, ExecutionStatu
     }
   }, []);
 
+  // Function to fetch full execution history from API
+  const fetchLogsHistory = useCallback(async (cardId: string): Promise<CardExecutionHistory | null> => {
+    try {
+      const response = await fetch(`${API_ENDPOINTS.logs}/${cardId}/history`);
+      if (!response.ok) return null;
+      const data = await response.json();
+      if (data.success) {
+        return {
+          cardId: data.cardId,
+          history: data.history
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error(`[useAgentExecution] Failed to fetch logs history for ${cardId}:`, error);
+      return null;
+    }
+  }, []);
+
   // Start polling for a card
   const startPolling = useCallback((cardId: string) => {
     // Don't start if already polling
     if (pollingIntervalsRef.current.has(cardId)) return;
 
     console.log(`[useAgentExecution] Starting log polling for card: ${cardId}`);
+
+    // Immediate fetch to update UI right away (don't wait for interval)
+    const doFetch = async () => {
+      const execution = await fetchLogs(cardId);
+      if (execution) {
+        setExecutions((prev) => {
+          const next = new Map(prev);
+          const current = next.get(cardId);
+
+          // Only update if we have new logs or status changed
+          if (!current || execution.logs.length > (current.logs?.length || 0) || current.status !== execution.status) {
+            next.set(cardId, {
+              cardId: execution.cardId,
+              status: execution.status,
+              result: execution.result,
+              logs: execution.logs || [],
+              startedAt: execution.startedAt,
+              completedAt: execution.completedAt,
+            });
+          }
+
+          // Stop polling if execution completed
+          if (execution.status !== 'running') {
+            stopPolling(cardId);
+
+            // Call completion callback if registered
+            const callback = completionCallbacksRef.current.get(cardId);
+            const completedExecution = next.get(cardId);
+            if (callback && completedExecution) {
+              console.log(`[useAgentExecution] Calling completion callback for card: ${cardId}`);
+              setTimeout(() => callback(completedExecution), 0);
+              completionCallbacksRef.current.delete(cardId);
+            } else if (completedExecution) {
+              console.log(`[useAgentExecution] No callback registered for card: ${cardId}, saving as pending completion`);
+              pendingCompletionsRef.current.set(cardId, completedExecution);
+            }
+          }
+
+          return next;
+        });
+      }
+    };
+
+    // Do immediate fetch
+    doFetch();
 
     const interval = setInterval(async () => {
       const execution = await fetchLogs(cardId);
@@ -104,14 +177,16 @@ export function useAgentExecution(initialExecutions?: Map<string, ExecutionStatu
 
             // Call completion callback if registered (for workflow recovery)
             const callback = completionCallbacksRef.current.get(cardId);
-            if (callback) {
-              const completedExecution = next.get(cardId);
-              if (completedExecution) {
-                console.log(`[useAgentExecution] Calling completion callback for card: ${cardId}`);
-                // Use setTimeout to ensure state is updated before callback
-                setTimeout(() => callback(completedExecution), 0);
-              }
+            const completedExecution = next.get(cardId);
+            if (callback && completedExecution) {
+              console.log(`[useAgentExecution] Calling completion callback for card: ${cardId}`);
+              // Use setTimeout to ensure state is updated before callback
+              setTimeout(() => callback(completedExecution), 0);
               completionCallbacksRef.current.delete(cardId);
+            } else if (completedExecution) {
+              // Save completion for later if callback not yet registered
+              console.log(`[useAgentExecution] No callback registered for card: ${cardId}, saving as pending completion`);
+              pendingCompletionsRef.current.set(cardId, completedExecution);
             }
           }
 
@@ -530,6 +605,14 @@ export function useAgentExecution(initialExecutions?: Map<string, ExecutionStatu
   const registerCompletionCallback = useCallback((cardId: string, callback: ExecutionCompletionCallback) => {
     console.log(`[useAgentExecution] Registering completion callback for card: ${cardId}`);
     completionCallbacksRef.current.set(cardId, callback);
+
+    // Check if execution already completed while waiting for callback registration
+    const pendingCompletion = pendingCompletionsRef.current.get(cardId);
+    if (pendingCompletion) {
+      console.log(`[useAgentExecution] Found pending completion for card: ${cardId}, calling callback immediately`);
+      pendingCompletionsRef.current.delete(cardId);
+      setTimeout(() => callback(pendingCompletion), 0);
+    }
   }, []);
 
   // Unregister a completion callback
@@ -547,5 +630,6 @@ export function useAgentExecution(initialExecutions?: Map<string, ExecutionStatu
     clearExecution,
     registerCompletionCallback,
     unregisterCompletionCallback,
+    fetchLogsHistory,
   };
 }

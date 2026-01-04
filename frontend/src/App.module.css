@@ -99,60 +99,31 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
-}
-
-.header {
-  position: relative;
-  padding: var(--space-6) var(--space-8);
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border-subtle);
-  display: flex;
   align-items: center;
-  justify-content: space-between;
-  /* Adicionar z-index explícito para o header */
-  z-index: 100;
-  /* Garantir que não interfira com modais */
-  isolation: isolate;
+  justify-content: center;
 }
 
-.header::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg,
-    transparent,
-    rgba(0, 212, 255, 0.03) 50%,
-    transparent
-  );
-  pointer-events: none;
-}
-
-.title {
-  font-family: var(--font-display);
-  font-size: 1.75rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-cyan) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.projectActions {
+.loader {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--space-3);
-  /* Garantir que dropdowns fiquem acima do header mas abaixo de modais */
-  position: relative;
-  z-index: 110;
+  gap: var(--space-4);
+  color: var(--text-secondary);
 }
 
-.main {
-  flex: 1;
-  padding: var(--space-6) var(--space-8);
-  overflow-x: auto;
-  transition: margin-right var(--duration-normal) var(--ease-out);
+.loaderSpinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--border-subtle);
+  border-top-color: var(--accent-cyan);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Scrollbar Styling */

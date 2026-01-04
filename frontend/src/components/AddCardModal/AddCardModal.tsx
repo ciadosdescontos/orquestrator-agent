@@ -21,6 +21,8 @@ interface AddCardModalProps {
     modelReview: ModelType;
     images: File[];
   }) => Promise<void>;
+  title?: string;
+  submitButtonText?: string;
 }
 
 interface ModelCardData {
@@ -66,7 +68,7 @@ const WORKFLOW_STAGES = [
   { key: 'modelReview', label: 'Review', icon: '◐', description: 'Polish & refine' }
 ];
 
-export function AddCardModal({ isOpen, onClose, onSubmit }: AddCardModalProps) {
+export function AddCardModal({ isOpen, onClose, onSubmit, title: modalTitle, submitButtonText }: AddCardModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [modelPlan, setModelPlan] = useState<ModelType>('opus-4.5');
@@ -349,7 +351,7 @@ export function AddCardModal({ isOpen, onClose, onSubmit }: AddCardModalProps) {
           <div className={styles.headerContent}>
             <div className={styles.titleGroup}>
               <span className={styles.titleIcon}>✦</span>
-              <h2 className={styles.title}>Create New Card</h2>
+              <h2 className={styles.title}>{modalTitle || 'Create New Card'}</h2>
               {isDraftDirty && (
                 <div className={styles.autoSaveIndicator}>
                   <span className={styles.autoSaveIcon}>•</span>
@@ -568,7 +570,7 @@ export function AddCardModal({ isOpen, onClose, onSubmit }: AddCardModalProps) {
               disabled={!title.trim() || isSubmitting}
             >
               <span className={styles.submitText}>
-                {isSubmitting ? 'Creating...' : 'Create Card'}
+                {isSubmitting ? 'Creating...' : (submitButtonText || 'Create Card')}
               </span>
               <span className={styles.submitIcon}>→</span>
             </button>

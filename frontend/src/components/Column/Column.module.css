@@ -51,7 +51,21 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--space-4);
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-2) var(--space-2);
+  min-height: 44px; /* Garantir altura mínima para acomodar botão */
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
 }
 
 .title {
@@ -122,6 +136,30 @@
   color: rgba(168, 85, 247, 0.8);
 }
 
+/* Ajustar estilos específicos para coluna backlog */
+.column_backlog .header {
+  padding: var(--space-2) var(--space-2);
+  border-bottom: 1px solid rgba(168, 85, 247, 0.15);
+  margin-bottom: var(--space-5);
+  position: relative;
+}
+
+/* Adicionar indicador visual sutil */
+.column_backlog .header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(168, 85, 247, 0.3) 20%,
+    rgba(168, 85, 247, 0.3) 80%,
+    transparent
+  );
+}
+
 /* PLAN - Cyan/Blue */
 .column_plan {
   border-top: 3px solid rgba(0, 212, 255, 0.6);
@@ -131,13 +169,13 @@
   color: rgba(0, 212, 255, 0.8);
 }
 
-/* IN-PROGRESS - Bright Cyan */
-.column_in-progress {
+/* IMPLEMENT - Bright Cyan */
+.column_implement {
   border-top: 3px solid rgba(0, 212, 255, 0.9);
   background: rgba(0, 212, 255, 0.03);
 }
 
-.column_in-progress .title {
+.column_implement .title {
   color: var(--accent-cyan);
 }
 

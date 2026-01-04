@@ -1,22 +1,23 @@
 import { useState, useRef, useEffect } from 'react';
-import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DragEndEvent, DragOverEvent, DragStartEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Card as CardType, ColumnId, COLUMNS, isValidTransition, ExecutionStatus, Project, WorkflowStatus, WorkflowStage } from './types';
-import { Board } from './components/Board/Board';
-import { Card } from './components/Card/Card';
-import { ProjectLoader } from './components/ProjectLoader/ProjectLoader';
-import { ProjectSwitcher } from './components/ProjectSwitcher';
 import { useAgentExecution } from './hooks/useAgentExecution';
 import { useWorkflowAutomation } from './hooks/useWorkflowAutomation';
 import { useChat } from './hooks/useChat';
-import Chat from './components/Chat/Chat';
-import ChatToggle from './components/ChatToggle/ChatToggle';
 import * as cardsApi from './api/cards';
 import { getCurrentProject } from './api/projects';
+import WorkspaceLayout, { ModuleType } from './layouts/WorkspaceLayout';
+import HomePage from './pages/HomePage';
+import KanbanPage from './pages/KanbanPage';
+import ChatPage from './pages/ChatPage';
+import SettingsPage from './pages/SettingsPage';
 import styles from './App.module.css';
 
 function App() {
+  const [currentView, setCurrentView] = useState<ModuleType>('dashboard');
   const [cards, setCards] = useState<CardType[]>([]);
   const [activeCard, setActiveCard] = useState<CardType | null>(null);
+  const [activeTab, setActiveTab] = useState<'kanban' | 'chat'>('kanban');
   const [isLoading, setIsLoading] = useState(true);
   const [isArchivedCollapsed, setIsArchivedCollapsed] = useState(false);
   const [isCanceladoCollapsed, setIsCanceladoCollapsed] = useState(false);
@@ -24,8 +25,8 @@ function App() {
   const [initialWorkflowStatuses, setInitialWorkflowStatuses] = useState<Map<string, WorkflowStatus> | undefined>();
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const dragStartColumnRef = useRef<ColumnId | null>(null);
-  const { executePlan, executeImplement, executeTest, executeReview, getExecutionStatus, registerCompletionCallback, executions } = useAgentExecution(initialExecutions);
-  const { state: chatState, sendMessage, toggleChat, closeChat } = useChat();
+  const { executePlan, executeImplement, executeTest, executeReview, getExecutionStatus, registerCompletionCallback, executions, fetchLogsHistory } = useAgentExecution(initialExecutions);
+  const { state: chatState, sendMessage, handleModelChange } = useChat();
 
   // Define moveCard and updateCardSpecPath BEFORE useWorkflowAutomation
   const moveCard = (cardId: string, newColumnId: ColumnId) => {
@@ -89,10 +90,14 @@ function App() {
 
         for (const card of loadedCards) {
           if (card.activeExecution) {
+            console.log(`[App] Found card ${card.id} with activeExecution:`, card.activeExecution);
+
             // Buscar logs completos da execução se estiver em andamento
             if (card.activeExecution.status === 'running') {
+              console.log(`[App] Card ${card.id} is running, fetching logs...`);
               try {
                 const logsData = await cardsApi.fetchLogs(card.id);
+                console.log(`[App] Fetched logs for card ${card.id}:`, logsData);
                 executionsMap.set(card.id, {
                   cardId: card.id,
                   status: logsData.status,
@@ -100,6 +105,7 @@ function App() {
                   completedAt: logsData.completedAt,
                   logs: logsData.logs || [],
                   result: logsData.result,
+                  workflowStage: logsData.workflowStage, // Incluir workflow stage
                 });
               } catch (error) {
                 console.warn(`[App] Failed to fetch logs for card ${card.id}:`, error);
@@ -110,6 +116,7 @@ function App() {
                   startedAt: card.activeExecution.startedAt,
                   completedAt: card.activeExecution.completedAt,
                   logs: [],
+                  workflowStage: card.activeExecution.workflowStage, // Incluir workflow stage
                 });
               }
             } else {
@@ -120,15 +127,34 @@ function App() {
                 startedAt: card.activeExecution.startedAt,
                 completedAt: card.activeExecution.completedAt,
                 logs: [],
+                workflowStage: card.activeExecution.workflowStage, // Incluir workflow stage
               });
             }
 
             // Restaurar workflow state se existir
             const activeExecWithWorkflow = card.activeExecution as any;
             if (activeExecWithWorkflow.workflowStage) {
+              // Mapear valores antigos para os novos (compatibilidade)
+              const stageMap: Record<string, WorkflowStage> = {
+                'plan': 'planning',
+                'implement': 'implementing',
+                'test': 'testing',
+                'test-implementation': 'testing',
+                'review': 'reviewing',
+                // Valores já corretos
+                'planning': 'planning',
+                'implementing': 'implementing',
+                'testing': 'testing',
+                'reviewing': 'reviewing',
+                'completed': 'completed',
+                'error': 'error',
+                'idle': 'idle',
+              };
+              const mappedStage = stageMap[activeExecWithWorkflow.workflowStage] || 'planning';
+
               workflowMap.set(card.id, {
                 cardId: card.id,
-                stage: activeExecWithWorkflow.workflowStage as WorkflowStage,
+                stage: mappedStage,
                 currentColumn: card.columnId,
                 error: activeExecWithWorkflow.workflowError,
               });
@@ -269,7 +295,7 @@ function App() {
     if (!isValidTransition(startColumn, finalColumnId)) {
       // Reverter para coluna original
       moveCard(activeId, startColumn);
-      alert(`Transição inválida: ${startColumn} → ${finalColumnId}.\nSiga o fluxo SDLC: backlog → plan → in-progress → test → review → done`);
+      alert(`Transição inválida: ${startColumn} → ${finalColumnId}.\nSiga o fluxo SDLC: backlog → plan → implement → test → review → done`);
       return;
     }
 
@@ -294,22 +320,22 @@ function App() {
         updateCardSpecPath(card.id, result.specPath);
         console.log(`[App] Spec path saved: ${result.specPath}`);
       }
-    } else if (startColumn === 'plan' && finalColumnId === 'in-progress') {
+    } else if (startColumn === 'plan' && finalColumnId === 'implement') {
       // Buscar o card atualizado (pode ter specPath agora)
       const updatedCard = cards.find(c => c.id === activeId);
       if (updatedCard?.specPath) {
-        console.log(`[App] Card moved from plan to in-progress: ${updatedCard.title}`);
+        console.log(`[App] Card moved from plan to implement: ${updatedCard.title}`);
         console.log(`[App] Executing /implement with spec: ${updatedCard.specPath}`);
         executeImplement(updatedCard);
       } else {
         alert('Este card não possui um plano associado. Execute primeiro a etapa de planejamento.');
         moveCard(activeId, startColumn);
       }
-    } else if (startColumn === 'in-progress' && finalColumnId === 'test') {
-      // Trigger: in-progress → test - Executar /test-implementation
+    } else if (startColumn === 'implement' && finalColumnId === 'test') {
+      // Trigger: implement → test - Executar /test-implementation
       const updatedCard = cards.find(c => c.id === activeId);
       if (updatedCard?.specPath) {
-        console.log(`[App] Card moved from in-progress to test: ${updatedCard.title}`);
+        console.log(`[App] Card moved from implement to test: ${updatedCard.title}`);
         console.log(`[App] Executing /test-implementation with spec: ${updatedCard.specPath}`);
         executeTest(updatedCard);
       } else {
@@ -330,45 +356,21 @@ function App() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className={styles.app}>
-        <header className={styles.header}>
-          <h1 className={styles.title}>Board Kanban</h1>
-        </header>
-        <main className={styles.main}>
-          <p>Carregando cards...</p>
-        </main>
-      </div>
-    );
-  }
+  const renderView = () => {
+    switch (currentView) {
+      case 'dashboard':
+        return <HomePage cards={cards} onNavigate={setCurrentView} />;
 
-  return (
-    <div className={styles.app}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>Board Kanban</h1>
-        <div className={styles.projectActions}>
-          <ProjectSwitcher
-            currentProject={currentProject}
-            onProjectSwitch={setCurrentProject}
-          />
-          <ProjectLoader
-            currentProject={currentProject}
-            onProjectLoad={setCurrentProject}
-          />
-        </div>
-      </header>
-      <main className={styles.main}>
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-        >
-          <Board
+      case 'kanban':
+        return (
+          <KanbanPage
             columns={COLUMNS}
             cards={cards}
+            activeCard={activeCard}
+            sensors={sensors}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
             onAddCard={addCard}
             onRemoveCard={removeCard}
             onUpdateCard={updateCard}
@@ -379,37 +381,49 @@ function App() {
             onToggleArchivedCollapse={() => setIsArchivedCollapsed(!isArchivedCollapsed)}
             isCanceladoCollapsed={isCanceladoCollapsed}
             onToggleCanceladoCollapse={() => setIsCanceladoCollapsed(!isCanceladoCollapsed)}
+            currentProject={currentProject}
+            onProjectSwitch={setCurrentProject}
+            onProjectLoad={setCurrentProject}
+            fetchLogsHistory={fetchLogsHistory}
           />
-          <DragOverlay>
-            {activeCard ? (
-              <Card
-                card={activeCard}
-                onRemove={() => {}}
-                isDragging
-              />
-            ) : null}
-          </DragOverlay>
-        </DndContext>
-      </main>
+        );
 
-      {/* Chat Panel */}
-      <Chat
-        isOpen={chatState.isOpen}
-        onClose={closeChat}
-        messages={chatState.session?.messages || []}
-        isLoading={chatState.isLoading}
-        error={chatState.error}
-        onSendMessage={sendMessage}
-      />
+      case 'chat':
+        return (
+          <ChatPage
+            messages={chatState.session?.messages || []}
+            isLoading={chatState.isLoading}
+            error={chatState.error}
+            onSendMessage={sendMessage}
+            selectedModel={chatState.selectedModel}
+            onModelChange={handleModelChange}
+          />
+        );
 
-      {/* Chat Toggle Button */}
-      <ChatToggle
-        isOpen={chatState.isOpen}
-        onClick={toggleChat}
-      />
+      case 'settings':
+        return <SettingsPage />;
 
+      default:
+        return <HomePage cards={cards} onNavigate={setCurrentView} />;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className={styles.app}>
+        <div className={styles.loader}>
+          <div className={styles.loaderSpinner}></div>
+          <p>Carregando workspace...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <WorkspaceLayout currentModule={currentView} onNavigate={setCurrentView}>
+      {renderView()}
       <div id="modal-root" />
-    </div>
+    </WorkspaceLayout>
   );
 }
 

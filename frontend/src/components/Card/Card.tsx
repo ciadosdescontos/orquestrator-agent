@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { Card as CardType, ExecutionStatus, WorkflowStatus } from '../../types';
+import { Card as CardType, ExecutionStatus, WorkflowStatus, ExecutionHistory } from '../../types';
 import { LogsModal } from '../LogsModal';
 import { CardEditModal } from '../CardEditModal';
+import { BranchIndicator } from '../BranchIndicator';
 import { removeImage } from '../../utils/imageHandler';
 import { API_ENDPOINTS } from '../../api/config';
 import styles from './Card.module.css';
@@ -15,18 +16,26 @@ interface CardProps {
   executionStatus?: ExecutionStatus;
   workflowStatus?: WorkflowStatus;
   onRunWorkflow?: (card: CardType) => void;
+  fetchLogsHistory?: (cardId: string) => Promise<{ cardId: string; history: ExecutionHistory[] } | null>;
 }
 
-export function Card({ card, onRemove, onUpdateCard, isDragging = false, executionStatus, workflowStatus, onRunWorkflow }: CardProps) {
+export function Card({ card, onRemove, onUpdateCard, isDragging = false, executionStatus, workflowStatus, onRunWorkflow, fetchLogsHistory }: CardProps) {
   const [isLogsOpen, setIsLogsOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [removingImageId, setRemovingImageId] = useState<string | null>(null);
+  const [logsHistory, setLogsHistory] = useState<ExecutionHistory[] | undefined>(undefined);
 
-  const isRunning = workflowStatus && workflowStatus.stage !== 'idle' && workflowStatus.stage !== 'completed';
+  // Card só é desabilitado se estiver ATIVAMENTE em execução
+  // Permitir arrastar se: idle, completed, error, ou se a execução já terminou
+  const isActivelyRunning = workflowStatus
+    && workflowStatus.stage !== 'idle'
+    && workflowStatus.stage !== 'completed'
+    && workflowStatus.stage !== 'error'
+    && executionStatus?.status === 'running'; // Só bloquear se a execução ainda está rodando
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: card.id,
-    disabled: isRunning // Apenas desabilitar drag durante execução do workflow
+    disabled: isActivelyRunning // Apenas desabilitar drag durante execução ativa
   });
 
   const style = transform
@@ -110,7 +119,7 @@ export function Card({ card, onRemove, onUpdateCard, isDragging = false, executi
         success: 'Plan completed',
         error: 'Plan failed',
       },
-      'in-progress': {
+      implement: {
         running: 'Executing /implement...',
         success: 'Implementation completed',
         error: 'Implementation failed',
@@ -156,9 +165,22 @@ export function Card({ card, onRemove, onUpdateCard, isDragging = false, executi
           </div>
         )}
         <div className={styles.content}>
-          <h3 className={styles.title}>{card.title}</h3>
+          <div className={styles.cardHeader}>
+            <h3 className={styles.title}>{card.title}</h3>
+            {card.branchName && (
+              <BranchIndicator
+                branchName={card.branchName}
+                mergeStatus={card.mergeStatus || 'none'}
+              />
+            )}
+          </div>
           {card.description && (
             <p className={styles.description}>{card.description}</p>
+          )}
+          {card.mergeStatus === 'failed' && (
+            <div className={styles.failedBanner}>
+              IA nao conseguiu resolver conflitos. Verificar manualmente.
+            </div>
           )}
           {card.images && card.images.length > 0 && (
             <div className={styles.imagePreview}>
@@ -213,8 +235,17 @@ export function Card({ card, onRemove, onUpdateCard, isDragging = false, executi
                     {hasLogs && (
                       <button
                         className={styles.viewLogsButton}
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation();
+
+                          // Buscar histórico completo antes de abrir o modal
+                          if (fetchLogsHistory) {
+                            const history = await fetchLogsHistory(card.id);
+                            if (history) {
+                              setLogsHistory(history.history);
+                            }
+                          }
+
                           setIsLogsOpen(true);
                         }}
                         aria-label="View execution logs"
@@ -235,7 +266,7 @@ export function Card({ card, onRemove, onUpdateCard, isDragging = false, executi
             </div>
           )}
         </div>
-        {card.columnId === 'backlog' && !isRunning && (
+        {card.columnId === 'backlog' && !isActivelyRunning && (
           <button
             className={styles.runButton}
             onClick={(e) => {
@@ -340,6 +371,7 @@ export function Card({ card, onRemove, onUpdateCard, isDragging = false, executi
           logs={executionStatus.logs || []}
           startedAt={executionStatus.startedAt}
           completedAt={executionStatus.completedAt}
+          history={logsHistory}
         />
       )}
       {onUpdateCard && (

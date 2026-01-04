@@ -26,9 +26,66 @@ from .execution import (
 
 from .repositories.execution_repository import ExecutionRepository
 from .models.execution import ExecutionStatus as DBExecutionStatus
+from .git_workspace import GitWorkspaceManager
 
 # Store executions in memory (mantido para compatibilidade durante migração)
 executions: dict[str, ExecutionRecord] = {}
+
+
+async def get_worktree_cwd(card_id: str, project_path: str, db_session: Optional[AsyncSession] = None) -> tuple[str, Optional[str], Optional[str]]:
+    """
+    Obtem o cwd baseado em worktree para isolamento do card.
+
+    Returns:
+        Tuple com (cwd, branch_name, worktree_path)
+        Se nao for repo git ou worktree falhar, retorna (project_path, None, None)
+    """
+    from .repositories.card_repository import CardRepository
+    from .schemas.card import CardUpdate
+
+    # Verificar se eh repo git
+    git_dir = Path(project_path) / ".git"
+    if not git_dir.exists():
+        print(f"[Agent] Project is not a git repo, using project path directly")
+        return project_path, None, None
+
+    # Obter card para verificar se ja tem worktree
+    if db_session:
+        card_repo = CardRepository(db_session)
+        card = await card_repo.get_by_id(card_id)
+
+        if card and card.worktree_path:
+            # Verificar se worktree ainda existe
+            if Path(card.worktree_path).exists():
+                print(f"[Agent] Using existing worktree: {card.worktree_path}")
+                return card.worktree_path, card.branch_name, card.worktree_path
+            else:
+                print(f"[Agent] Worktree path no longer exists, creating new one")
+
+    # Criar novo worktree
+    git_manager = GitWorkspaceManager(project_path)
+    await git_manager.recover_state()
+
+    result = await git_manager.create_worktree(card_id)
+
+    if result.success:
+        print(f"[Agent] Created worktree: {result.worktree_path} on branch {result.branch_name}")
+
+        # Atualizar card no banco
+        if db_session:
+            card_repo = CardRepository(db_session)
+            update_data = CardUpdate(
+                branch_name=result.branch_name,
+                worktree_path=result.worktree_path,
+                merge_status="none"
+            )
+            await card_repo.update(card_id, update_data)
+            await db_session.commit()
+
+        return result.worktree_path, result.branch_name, result.worktree_path
+    else:
+        print(f"[Agent] Failed to create worktree: {result.error}, using project path")
+        return project_path, None, None
 
 
 async def get_execution(card_id: str, db_session: Optional[AsyncSession] = None) -> Optional[dict]:
@@ -119,10 +176,22 @@ async def execute_plan(
         )
         active_project = result.scalar_one_or_none()
         if active_project:
-            cwd = active_project.path
-            print(f"[Agent] Found active project, using project directory: {cwd}")
+            project_path = active_project.path
+            print(f"[Agent] Found active project: {project_path}")
         else:
-            print(f"[Agent] No active project found, using default cwd: {cwd}")
+            # Fallback: usar o diretório raiz do orquestrator-agent
+            # (3 níveis acima: agent.py -> src -> backend -> orquestrator-agent)
+            project_path = str(Path(__file__).parent.parent.parent)
+            print(f"[Agent] No active project, using root project: {project_path}")
+
+        # Obter worktree para isolamento
+        cwd, branch_name, worktree_path = await get_worktree_cwd(
+            card_id, project_path, session
+        )
+        if worktree_path:
+            print(f"[Agent] Using worktree isolation: {cwd}")
+        else:
+            print(f"[Agent] Using project directory (no worktree): {cwd}")
 
     # Mapear nome de modelo para valor do SDK
     model_map = {
@@ -332,10 +401,21 @@ async def execute_implement(
         )
         active_project = result.scalar_one_or_none()
         if active_project:
-            cwd = active_project.path
-            print(f"[Agent] Found active project, using project directory: {cwd}")
+            project_path = active_project.path
+            print(f"[Agent] Found active project: {project_path}")
         else:
-            print(f"[Agent] No active project found, using default cwd: {cwd}")
+            # Fallback: usar o diretório raiz do orquestrator-agent
+            project_path = str(Path(__file__).parent.parent.parent)
+            print(f"[Agent] No active project, using root project: {project_path}")
+
+        # Obter worktree para isolamento
+        cwd, branch_name, worktree_path = await get_worktree_cwd(
+            card_id, project_path, session
+        )
+        if worktree_path:
+            print(f"[Agent] Using worktree isolation: {cwd}")
+        else:
+            print(f"[Agent] Using project directory (no worktree): {cwd}")
 
     # Mapear nome de modelo para valor do SDK
     model_map = {
@@ -356,7 +436,36 @@ async def execute_implement(
     # Usar spec_path como "título" para contexto visual
     spec_name = Path(spec_path).stem  # Ex: "feature-x" de "specs/feature-x.md"
 
-    # Initialize execution record
+    # Usar repository se disponível, senão usar memória
+    repo = None
+    execution_db = None
+
+    if db_session:
+        repo = ExecutionRepository(db_session)
+        # Criar execução no banco
+        execution_db = await repo.create_execution(
+            card_id=card_id,
+            command="/implement",
+            title=f"impl:{spec_name}"
+        )
+        # Log inicial no banco
+        await repo.add_log(
+            execution_id=execution_db.id,
+            log_type="info",
+            content=f"Starting implementation for: {spec_path}"
+        )
+        await repo.add_log(
+            execution_id=execution_db.id,
+            log_type="info",
+            content=f"Working directory: {cwd}"
+        )
+        await repo.add_log(
+            execution_id=execution_db.id,
+            log_type="info",
+            content=f"Prompt: {prompt}"
+        )
+
+    # Initialize execution record (memória - para compatibilidade)
     record = ExecutionRecord(
         cardId=card_id,
         title=f"impl:{spec_name}",  # Prefixo para indicar que é implement
@@ -388,9 +497,23 @@ async def execute_implement(
                 for block in message.content:
                     if isinstance(block, TextBlock):
                         add_log(record, LogType.TEXT, block.text)
+                        # Salva log no banco se disponível
+                        if repo and execution_db:
+                            await repo.add_log(
+                                execution_id=execution_db.id,
+                                log_type="text",
+                                content=block.text
+                            )
                         result_text += block.text + "\n"
                     elif isinstance(block, ToolUseBlock):
                         add_log(record, LogType.TOOL, f"Using tool: {block.name}")
+                        # Salva log no banco se disponível
+                        if repo and execution_db:
+                            await repo.add_log(
+                                execution_id=execution_db.id,
+                                log_type="tool",
+                                content=f"Using tool: {block.name}"
+                            )
 
             elif isinstance(message, ResultMessage):
                 if hasattr(message, "result") and message.result:
@@ -402,6 +525,22 @@ async def execute_implement(
         record.status = ExecutionStatus.SUCCESS
         record.result = result_text
         add_log(record, LogType.INFO, "Implementation completed successfully")
+
+        # Atualizar status no banco se disponível
+        if repo and execution_db:
+            await repo.update_execution_status(
+                execution_id=execution_db.id,
+                status=DBExecutionStatus.SUCCESS,
+                result=result_text
+            )
+            # Busca execução completa para retornar logs
+            execution_data = await repo.get_execution_with_logs(card_id)
+            if execution_data:
+                return PlanResult(
+                    success=True,
+                    result=result_text,
+                    logs=execution_data["logs"],
+                )
 
         return PlanResult(
             success=True,
@@ -415,6 +554,27 @@ async def execute_implement(
         record.status = ExecutionStatus.ERROR
         record.result = error_message
         add_log(record, LogType.ERROR, f"Execution error: {error_message}")
+
+        # Atualizar status de erro no banco se disponível
+        if repo and execution_db:
+            await repo.add_log(
+                execution_id=execution_db.id,
+                log_type="error",
+                content=error_message
+            )
+            await repo.update_execution_status(
+                execution_id=execution_db.id,
+                status=DBExecutionStatus.ERROR,
+                result=error_message
+            )
+            # Busca execução para retornar logs
+            execution_data = await repo.get_execution_with_logs(card_id)
+            if execution_data:
+                return PlanResult(
+                    success=False,
+                    error=error_message,
+                    logs=execution_data["logs"],
+                )
 
         return PlanResult(
             success=False,
@@ -488,6 +648,7 @@ async def execute_test_implementation(
     cwd: str,
     model: str = "opus-4.5",
     images: Optional[list] = None,
+    db_session: Optional[AsyncSession] = None,
 ) -> PlanResult:
     """Execute /test-implementation command with the spec file path."""
     # Obter diretório do projeto atual do banco de dados
@@ -503,10 +664,21 @@ async def execute_test_implementation(
         )
         active_project = result.scalar_one_or_none()
         if active_project:
-            cwd = active_project.path
-            print(f"[Agent] Found active project, using project directory: {cwd}")
+            project_path = active_project.path
+            print(f"[Agent] Found active project: {project_path}")
         else:
-            print(f"[Agent] No active project found, using default cwd: {cwd}")
+            # Fallback: usar o diretório raiz do orquestrator-agent
+            project_path = str(Path(__file__).parent.parent.parent)
+            print(f"[Agent] No active project, using root project: {project_path}")
+
+        # Obter worktree para isolamento
+        cwd, branch_name, worktree_path = await get_worktree_cwd(
+            card_id, project_path, session
+        )
+        if worktree_path:
+            print(f"[Agent] Using worktree isolation: {cwd}")
+        else:
+            print(f"[Agent] Using project directory (no worktree): {cwd}")
 
     # Mapear nome de modelo para valor do SDK
     model_map = {
@@ -527,7 +699,36 @@ async def execute_test_implementation(
     # Usar spec_path como "título" para contexto visual
     spec_name = Path(spec_path).stem  # Ex: "feature-x" de "specs/feature-x.md"
 
-    # Initialize execution record
+    # Usar repository se disponível, senão usar memória
+    repo = None
+    execution_db = None
+
+    if db_session:
+        repo = ExecutionRepository(db_session)
+        # Criar execução no banco
+        execution_db = await repo.create_execution(
+            card_id=card_id,
+            command="/test-implementation",
+            title=f"test:{spec_name}"
+        )
+        # Log inicial no banco
+        await repo.add_log(
+            execution_id=execution_db.id,
+            log_type="info",
+            content=f"Starting test-implementation for: {spec_path}"
+        )
+        await repo.add_log(
+            execution_id=execution_db.id,
+            log_type="info",
+            content=f"Working directory: {cwd}"
+        )
+        await repo.add_log(
+            execution_id=execution_db.id,
+            log_type="info",
+            content=f"Prompt: {prompt}"
+        )
+
+    # Initialize execution record (memória - para compatibilidade)
     record = ExecutionRecord(
         cardId=card_id,
         title=f"test:{spec_name}",  # Prefixo para indicar que é test
@@ -559,9 +760,23 @@ async def execute_test_implementation(
                 for block in message.content:
                     if isinstance(block, TextBlock):
                         add_log(record, LogType.TEXT, block.text)
+                        # Salva log no banco se disponível
+                        if repo and execution_db:
+                            await repo.add_log(
+                                execution_id=execution_db.id,
+                                log_type="text",
+                                content=block.text
+                            )
                         result_text += block.text + "\n"
                     elif isinstance(block, ToolUseBlock):
                         add_log(record, LogType.TOOL, f"Using tool: {block.name}")
+                        # Salva log no banco se disponível
+                        if repo and execution_db:
+                            await repo.add_log(
+                                execution_id=execution_db.id,
+                                log_type="tool",
+                                content=f"Using tool: {block.name}"
+                            )
 
             elif isinstance(message, ResultMessage):
                 if hasattr(message, "result") and message.result:
@@ -588,8 +803,33 @@ async def execute_test_implementation(
             record.status = ExecutionStatus.ERROR
             add_log(record, LogType.ERROR, "Tests failed - creating fix card")
 
+            # Atualizar status de erro no banco se disponível
+            if repo and execution_db:
+                await repo.add_log(
+                    execution_id=execution_db.id,
+                    log_type="error",
+                    content="Tests failed - creating fix card"
+                )
+                await repo.update_execution_status(
+                    execution_id=execution_db.id,
+                    status=DBExecutionStatus.ERROR,
+                    result="Tests failed"
+                )
+
             # Analyze test failure and create fix card
             fix_card_id = await create_fix_card_for_test_failure(card_id, record.logs, spec_path)
+
+            # Busca execução para retornar logs
+            if repo and execution_db:
+                execution_data = await repo.get_execution_with_logs(card_id)
+                if execution_data:
+                    return PlanResult(
+                        success=False,
+                        error="Tests failed. A fix card has been created automatically.",
+                        logs=execution_data["logs"],
+                        fix_card_created=True if fix_card_id else False,
+                        fix_card_id=fix_card_id
+                    )
 
             return PlanResult(
                 success=False,
@@ -602,6 +842,22 @@ async def execute_test_implementation(
             record.status = ExecutionStatus.SUCCESS
             record.result = result_text
             add_log(record, LogType.INFO, "Test-implementation completed successfully")
+
+            # Atualizar status no banco se disponível
+            if repo and execution_db:
+                await repo.update_execution_status(
+                    execution_id=execution_db.id,
+                    status=DBExecutionStatus.SUCCESS,
+                    result=result_text
+                )
+                # Busca execução completa para retornar logs
+                execution_data = await repo.get_execution_with_logs(card_id)
+                if execution_data:
+                    return PlanResult(
+                        success=True,
+                        result=result_text,
+                        logs=execution_data["logs"],
+                    )
 
             return PlanResult(
                 success=True,
@@ -616,6 +872,19 @@ async def execute_test_implementation(
         record.result = error_message
         add_log(record, LogType.ERROR, f"Execution error: {error_message}")
 
+        # Atualizar status de erro no banco se disponível
+        if repo and execution_db:
+            await repo.add_log(
+                execution_id=execution_db.id,
+                log_type="error",
+                content=error_message
+            )
+            await repo.update_execution_status(
+                execution_id=execution_db.id,
+                status=DBExecutionStatus.ERROR,
+                result=error_message
+            )
+
         # Create fix card for execution errors as well
         fix_card_id = await create_fix_card_for_test_failure(
             card_id,
@@ -623,6 +892,18 @@ async def execute_test_implementation(
             spec_path,
             execution_error=error_message
         )
+
+        # Busca execução para retornar logs
+        if repo and execution_db:
+            execution_data = await repo.get_execution_with_logs(card_id)
+            if execution_data:
+                return PlanResult(
+                    success=False,
+                    error=error_message,
+                    logs=execution_data["logs"],
+                    fix_card_created=True if fix_card_id else False,
+                    fix_card_id=fix_card_id
+                )
 
         return PlanResult(
             success=False,
@@ -639,6 +920,7 @@ async def execute_review(
     cwd: str,
     model: str = "opus-4.5",
     images: Optional[list] = None,
+    db_session: Optional[AsyncSession] = None,
 ) -> PlanResult:
     """Execute /review command with the spec file path."""
     # Obter diretório do projeto atual do banco de dados
@@ -654,10 +936,21 @@ async def execute_review(
         )
         active_project = result.scalar_one_or_none()
         if active_project:
-            cwd = active_project.path
-            print(f"[Agent] Found active project, using project directory: {cwd}")
+            project_path = active_project.path
+            print(f"[Agent] Found active project: {project_path}")
         else:
-            print(f"[Agent] No active project found, using default cwd: {cwd}")
+            # Fallback: usar o diretório raiz do orquestrator-agent
+            project_path = str(Path(__file__).parent.parent.parent)
+            print(f"[Agent] No active project, using root project: {project_path}")
+
+        # Obter worktree para isolamento
+        cwd, branch_name, worktree_path = await get_worktree_cwd(
+            card_id, project_path, session
+        )
+        if worktree_path:
+            print(f"[Agent] Using worktree isolation: {cwd}")
+        else:
+            print(f"[Agent] Using project directory (no worktree): {cwd}")
 
     # Mapear nome de modelo para valor do SDK
     model_map = {
@@ -678,7 +971,36 @@ async def execute_review(
     # Usar spec_path como "título" para contexto visual
     spec_name = Path(spec_path).stem  # Ex: "feature-x" de "specs/feature-x.md"
 
-    # Initialize execution record
+    # Usar repository se disponível, senão usar memória
+    repo = None
+    execution_db = None
+
+    if db_session:
+        repo = ExecutionRepository(db_session)
+        # Criar execução no banco
+        execution_db = await repo.create_execution(
+            card_id=card_id,
+            command="/review",
+            title=f"review:{spec_name}"
+        )
+        # Log inicial no banco
+        await repo.add_log(
+            execution_id=execution_db.id,
+            log_type="info",
+            content=f"Starting review for: {spec_path}"
+        )
+        await repo.add_log(
+            execution_id=execution_db.id,
+            log_type="info",
+            content=f"Working directory: {cwd}"
+        )
+        await repo.add_log(
+            execution_id=execution_db.id,
+            log_type="info",
+            content=f"Prompt: {prompt}"
+        )
+
+    # Initialize execution record (memória - para compatibilidade)
     record = ExecutionRecord(
         cardId=card_id,
         title=f"review:{spec_name}",  # Prefixo para indicar que é review
@@ -710,9 +1032,23 @@ async def execute_review(
                 for block in message.content:
                     if isinstance(block, TextBlock):
                         add_log(record, LogType.TEXT, block.text)
+                        # Salva log no banco se disponível
+                        if repo and execution_db:
+                            await repo.add_log(
+                                execution_id=execution_db.id,
+                                log_type="text",
+                                content=block.text
+                            )
                         result_text += block.text + "\n"
                     elif isinstance(block, ToolUseBlock):
                         add_log(record, LogType.TOOL, f"Using tool: {block.name}")
+                        # Salva log no banco se disponível
+                        if repo and execution_db:
+                            await repo.add_log(
+                                execution_id=execution_db.id,
+                                log_type="tool",
+                                content=f"Using tool: {block.name}"
+                            )
 
             elif isinstance(message, ResultMessage):
                 if hasattr(message, "result") and message.result:
@@ -724,6 +1060,22 @@ async def execute_review(
         record.status = ExecutionStatus.SUCCESS
         record.result = result_text
         add_log(record, LogType.INFO, "Review completed successfully")
+
+        # Atualizar status no banco se disponível
+        if repo and execution_db:
+            await repo.update_execution_status(
+                execution_id=execution_db.id,
+                status=DBExecutionStatus.SUCCESS,
+                result=result_text
+            )
+            # Busca execução completa para retornar logs
+            execution_data = await repo.get_execution_with_logs(card_id)
+            if execution_data:
+                return PlanResult(
+                    success=True,
+                    result=result_text,
+                    logs=execution_data["logs"],
+                )
 
         return PlanResult(
             success=True,
@@ -737,6 +1089,27 @@ async def execute_review(
         record.status = ExecutionStatus.ERROR
         record.result = error_message
         add_log(record, LogType.ERROR, f"Execution error: {error_message}")
+
+        # Atualizar status de erro no banco se disponível
+        if repo and execution_db:
+            await repo.add_log(
+                execution_id=execution_db.id,
+                log_type="error",
+                content=error_message
+            )
+            await repo.update_execution_status(
+                execution_id=execution_db.id,
+                status=DBExecutionStatus.ERROR,
+                result=error_message
+            )
+            # Busca execução para retornar logs
+            execution_data = await repo.get_execution_with_logs(card_id)
+            if execution_data:
+                return PlanResult(
+                    success=False,
+                    error=error_message,
+                    logs=execution_data["logs"],
+                )
 
         return PlanResult(
             success=False,

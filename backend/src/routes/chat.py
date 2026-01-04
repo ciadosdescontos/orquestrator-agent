@@ -103,7 +103,8 @@ async def chat_websocket(websocket: WebSocket, session_id: str):
     The WebSocket expects JSON messages with format:
     {
         "type": "message",
-        "content": "user message text"
+        "content": "user message text",
+        "model": "claude-3-sonnet" (optional, defaults to claude-3-sonnet)
     }
 
     And sends back JSON responses:
@@ -132,6 +133,7 @@ async def chat_websocket(websocket: WebSocket, session_id: str):
                 message_data = json.loads(data)
                 message_type = message_data.get("type")
                 message_content = message_data.get("content")
+                message_model = message_data.get("model", "claude-3-sonnet")
 
                 if message_type != "message" or not message_content:
                     await websocket.send_text(
@@ -142,10 +144,11 @@ async def chat_websocket(websocket: WebSocket, session_id: str):
                     )
                     continue
 
-                # Stream response from chat service
+                # Stream response from chat service with selected model
                 async for chunk in chat_service.send_message(
                     session_id=session_id,
                     message=message_content,
+                    model=message_model,
                 ):
                     await websocket.send_text(json.dumps(chunk))
 

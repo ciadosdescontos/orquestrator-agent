@@ -9,6 +9,7 @@ class MessageSchema(BaseModel):
     role: Literal['user', 'assistant']
     content: str
     timestamp: datetime
+    model: Optional[str] = None
 
 
 class ChatSessionSchema(BaseModel):
@@ -17,6 +18,7 @@ class ChatSessionSchema(BaseModel):
     messages: list[MessageSchema]
     createdAt: datetime
     updatedAt: datetime
+    model: Optional[str] = None
 
 
 class CreateSessionRequest(BaseModel):
@@ -33,6 +35,7 @@ class CreateSessionResponse(BaseModel):
 class SendMessageRequest(BaseModel):
     """Request to send a message"""
     content: str
+    model: Optional[str] = 'claude-3-sonnet'
 
 
 class StreamChunk(BaseModel):

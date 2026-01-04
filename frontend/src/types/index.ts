@@ -1,5 +1,8 @@
-export type ColumnId = 'backlog' | 'plan' | 'in-progress' | 'test' | 'review' | 'done' | 'archived' | 'cancelado';
+export type ColumnId = 'backlog' | 'plan' | 'implement' | 'test' | 'review' | 'done' | 'archived' | 'cancelado';
 export type ModelType = 'opus-4.5' | 'sonnet-4.5' | 'haiku-4.5';
+
+// Status de merge - IA resolve conflitos automaticamente
+export type MergeStatus = 'none' | 'merging' | 'resolving' | 'merged' | 'failed';
 
 export interface CardImage {
   id: string;
@@ -14,6 +17,8 @@ export interface ActiveExecution {
   command?: string;
   startedAt?: string;
   completedAt?: string;
+  workflowStage?: string; // Stage do workflow (plan, implement, test, review)
+  workflowError?: string; // Erro do workflow se houver
 }
 
 export interface Card {
@@ -27,10 +32,14 @@ export interface Card {
   modelTest: ModelType;
   modelReview: ModelType;
   images?: CardImage[];
-  activeExecution?: ActiveExecution; // Execução ativa persistida no banco
-  parentCardId?: string; // ID do card pai (quando for um card de correção)
-  isFixCard?: boolean; // Indica se é um card de correção
-  testErrorContext?: string; // Contexto do erro que gerou o card de correção
+  activeExecution?: ActiveExecution; // Execucao ativa persistida no banco
+  parentCardId?: string; // ID do card pai (quando for um card de correcao)
+  isFixCard?: boolean; // Indica se eh um card de correcao
+  testErrorContext?: string; // Contexto do erro que gerou o card de correcao
+  // Campos para worktree isolation
+  branchName?: string;
+  worktreePath?: string;
+  mergeStatus: MergeStatus;
 }
 
 export interface Column {
@@ -56,12 +65,14 @@ export interface ExecutionStatus {
   // Fix card fields
   fixCardCreated?: boolean; // Indica se um card de correção foi criado
   fixCardId?: string; // ID do card de correção criado
+  // Workflow recovery fields
+  workflowStage?: string; // Stage do workflow (plan, implement, test, review)
 }
 
 export const COLUMNS: Column[] = [
   { id: 'backlog', title: 'Backlog' },
   { id: 'plan', title: 'Plan' },
-  { id: 'in-progress', title: 'In Progress' },
+  { id: 'implement', title: 'Implement' },
   { id: 'test', title: 'Test' },
   { id: 'review', title: 'Review' },
   { id: 'done', title: 'Done' },
@@ -72,8 +83,8 @@ export const COLUMNS: Column[] = [
 // Transições permitidas no fluxo SDLC
 export const ALLOWED_TRANSITIONS: Record<ColumnId, ColumnId[]> = {
   'backlog': ['plan', 'cancelado'],
-  'plan': ['in-progress', 'cancelado'],
-  'in-progress': ['test', 'cancelado'],
+  'plan': ['implement', 'cancelado'],
+  'implement': ['test', 'cancelado'],
   'test': ['review', 'cancelado'],
   'review': ['done', 'cancelado'],
   'done': ['archived', 'cancelado'],
@@ -130,4 +141,31 @@ export interface CardDraft {
   previewImages: DraftImage[];
   savedAt: string; // ISO timestamp
   version: number; // Para controle de versão do draft
+}
+
+// Tipos para histórico de execuções
+export interface ExecutionHistory {
+  executionId: string;
+  command: string;
+  title: string;
+  status: 'idle' | 'running' | 'success' | 'error';
+  workflowStage?: string;
+  startedAt: string;
+  completedAt?: string;
+  logs: ExecutionLog[];
+}
+
+export interface CardExecutionHistory {
+  cardId: string;
+  history: ExecutionHistory[];
+}
+
+// Interface para branches ativos
+export interface ActiveBranch {
+  branch: string;
+  path: string;
+  cardId: string;
+  cardTitle: string;
+  cardColumn: string;
+  mergeStatus: MergeStatus;
 }

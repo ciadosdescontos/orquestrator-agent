@@ -1,7 +1,7 @@
 .messageWrapper {
   display: flex;
   width: 100%;
-  animation: slideIn 0.3s ease-out;
+  animation: messageSlideIn 0.4s var(--ease-spring);
 }
 
 .messageWrapper.user {
@@ -16,65 +16,101 @@
   max-width: 85%;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .messageHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
+  padding: 0 var(--space-2);
   font-size: 0.75rem;
 }
 
 .messageRole {
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 .messageTime {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--text-muted);
   font-size: 0.7rem;
 }
 
 .messageText {
-  padding: 0.875rem 1rem;
-  border-radius: 12px;
-  line-height: 1.5;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  line-height: 1.6;
   word-wrap: break-word;
   white-space: pre-wrap;
   position: relative;
+  transition: all var(--duration-normal) var(--ease-out);
+  font-size: 0.95rem;
 }
 
+/* Mensagem do usuário com gradiente cósmico */
 .user .messageText {
-  background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(65, 105, 225, 0.3));
-  border: 1px solid rgba(138, 43, 226, 0.4);
-  color: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 4px 12px rgba(138, 43, 226, 0.2);
+  background: linear-gradient(135deg,
+    rgba(0, 212, 255, 0.12) 0%,
+    rgba(168, 85, 247, 0.08) 100%);
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  color: var(--text-primary);
+  box-shadow: 0 4px 16px rgba(0, 212, 255, 0.1);
+  backdrop-filter: blur(12px);
 }
 
+.user .messageText:hover {
+  background: linear-gradient(135deg,
+    rgba(0, 212, 255, 0.15) 0%,
+    rgba(168, 85, 247, 0.1) 100%);
+  transform: translateX(-4px);
+  box-shadow: 0 6px 24px rgba(0, 212, 255, 0.15);
+}
+
+/* Mensagem do assistente com glass morphism */
 .assistant .messageText {
-  background: rgba(30, 30, 60, 0.6);
-  border: 1px solid rgba(138, 43, 226, 0.2);
-  color: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-left: 2px solid var(--accent-cyan);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(12px) saturate(180%);
 }
 
+.assistant .messageText:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateX(4px);
+  box-shadow: 0 8px 32px rgba(0, 212, 255, 0.08);
+  border-left-color: var(--accent-purple);
+}
+
+/* Cursor de streaming */
 .streamingCursor {
   display: inline-block;
   margin-left: 2px;
+  width: 8px;
+  height: 1em;
+  background: linear-gradient(135deg,
+    var(--accent-cyan) 0%,
+    var(--accent-purple) 100%);
   animation: blink 1s step-end infinite;
-  color: rgba(138, 43, 226, 0.8);
+  border-radius: 2px;
+  box-shadow: 0 0 8px var(--accent-cyan-glow);
 }
 
-@keyframes slideIn {
+/* Animações */
+@keyframes messageSlideIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(20px) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -83,6 +119,46 @@
     opacity: 1;
   }
   51%, 100% {
-    opacity: 0;
+    opacity: 0.2;
+  }
+}
+
+/* Responsividade Mobile */
+@media (max-width: 768px) {
+  .messageContent {
+    max-width: 90%;
+  }
+
+  .user .messageContent {
+    max-width: 85%;
+  }
+
+  .messageText {
+    padding: var(--space-3) var(--space-4);
+    font-size: 0.9rem;
+  }
+
+  .messageHeader {
+    font-size: 0.7rem;
+  }
+
+  .messageTime {
+    font-size: 0.65rem;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .messageWrapper {
+    animation: none;
+  }
+
+  .streamingCursor {
+    animation: none;
+    opacity: 1;
+  }
+
+  .messageText:hover {
+    transform: none;
   }
 }
