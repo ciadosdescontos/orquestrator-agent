@@ -3,6 +3,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { Card as CardType, ExecutionStatus, WorkflowStatus, ExecutionHistory } from '../../types';
 import { LogsModal } from '../LogsModal';
 import { CardEditModal } from '../CardEditModal';
+import { BranchIndicator } from '../BranchIndicator';
 import { removeImage } from '../../utils/imageHandler';
 import { API_ENDPOINTS } from '../../api/config';
 import styles from './Card.module.css';
@@ -164,9 +165,22 @@ export function Card({ card, onRemove, onUpdateCard, isDragging = false, executi
           </div>
         )}
         <div className={styles.content}>
-          <h3 className={styles.title}>{card.title}</h3>
+          <div className={styles.cardHeader}>
+            <h3 className={styles.title}>{card.title}</h3>
+            {card.branchName && (
+              <BranchIndicator
+                branchName={card.branchName}
+                mergeStatus={card.mergeStatus || 'none'}
+              />
+            )}
+          </div>
           {card.description && (
             <p className={styles.description}>{card.description}</p>
+          )}
+          {card.mergeStatus === 'failed' && (
+            <div className={styles.failedBanner}>
+              IA nao conseguiu resolver conflitos. Verificar manualmente.
+            </div>
           )}
           {card.images && card.images.length > 0 && (
             <div className={styles.imagePreview}>

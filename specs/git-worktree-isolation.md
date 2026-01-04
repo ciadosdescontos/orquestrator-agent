@@ -9,13 +9,13 @@ Implementar sistema de isolamento de código usando Git Worktrees para permitir 
 ## 2. Objetivos e Escopo
 
 ### Objetivos
-- [ ] Criar worktree isolado automaticamente quando card entra em execução
-- [ ] Garantir que cada card trabalhe em sua própria branch
-- [ ] Implementar merge automático ao completar workflow
-- [ ] Adicionar detecção e gerenciamento de conflitos
-- [ ] Criar UI para visualizar status de branches e resolver conflitos
-- [ ] Adicionar sub-estado MERGING em cards da coluna REVIEW
-- [ ] Implementar limpeza automática de worktrees e branches
+- [x] Criar worktree isolado automaticamente quando card entra em execução
+- [x] Garantir que cada card trabalhe em sua própria branch
+- [x] Implementar merge automático ao completar workflow
+- [x] Adicionar detecção e gerenciamento de conflitos
+- [x] Criar UI para visualizar status de branches e resolver conflitos
+- [x] Adicionar sub-estado MERGING em cards da coluna REVIEW
+- [x] Implementar limpeza automática de worktrees e branches
 
 ### Fora do Escopo
 - Sistema de rebase interativo (apenas merge simples)

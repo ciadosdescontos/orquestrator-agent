@@ -26,9 +26,66 @@ from .execution import (
 
 from .repositories.execution_repository import ExecutionRepository
 from .models.execution import ExecutionStatus as DBExecutionStatus
+from .git_workspace import GitWorkspaceManager
 
 # Store executions in memory (mantido para compatibilidade durante migração)
 executions: dict[str, ExecutionRecord] = {}
+
+
+async def get_worktree_cwd(card_id: str, project_path: str, db_session: Optional[AsyncSession] = None) -> tuple[str, Optional[str], Optional[str]]:
+    """
+    Obtem o cwd baseado em worktree para isolamento do card.
+
+    Returns:
+        Tuple com (cwd, branch_name, worktree_path)
+        Se nao for repo git ou worktree falhar, retorna (project_path, None, None)
+    """
+    from .repositories.card_repository import CardRepository
+    from .schemas.card import CardUpdate
+
+    # Verificar se eh repo git
+    git_dir = Path(project_path) / ".git"
+    if not git_dir.exists():
+        print(f"[Agent] Project is not a git repo, using project path directly")
+        return project_path, None, None
+
+    # Obter card para verificar se ja tem worktree
+    if db_session:
+        card_repo = CardRepository(db_session)
+        card = await card_repo.get_by_id(card_id)
+
+        if card and card.worktree_path:
+            # Verificar se worktree ainda existe
+            if Path(card.worktree_path).exists():
+                print(f"[Agent] Using existing worktree: {card.worktree_path}")
+                return card.worktree_path, card.branch_name, card.worktree_path
+            else:
+                print(f"[Agent] Worktree path no longer exists, creating new one")
+
+    # Criar novo worktree
+    git_manager = GitWorkspaceManager(project_path)
+    await git_manager.recover_state()
+
+    result = await git_manager.create_worktree(card_id)
+
+    if result.success:
+        print(f"[Agent] Created worktree: {result.worktree_path} on branch {result.branch_name}")
+
+        # Atualizar card no banco
+        if db_session:
+            card_repo = CardRepository(db_session)
+            update_data = CardUpdate(
+                branch_name=result.branch_name,
+                worktree_path=result.worktree_path,
+                merge_status="none"
+            )
+            await card_repo.update(card_id, update_data)
+            await db_session.commit()
+
+        return result.worktree_path, result.branch_name, result.worktree_path
+    else:
+        print(f"[Agent] Failed to create worktree: {result.error}, using project path")
+        return project_path, None, None
 
 
 async def get_execution(card_id: str, db_session: Optional[AsyncSession] = None) -> Optional[dict]:
@@ -119,10 +176,22 @@ async def execute_plan(
         )
         active_project = result.scalar_one_or_none()
         if active_project:
-            cwd = active_project.path
-            print(f"[Agent] Found active project, using project directory: {cwd}")
+            project_path = active_project.path
+            print(f"[Agent] Found active project: {project_path}")
         else:
-            print(f"[Agent] No active project found, using default cwd: {cwd}")
+            # Fallback: usar o diretório raiz do orquestrator-agent
+            # (3 níveis acima: agent.py -> src -> backend -> orquestrator-agent)
+            project_path = str(Path(__file__).parent.parent.parent)
+            print(f"[Agent] No active project, using root project: {project_path}")
+
+        # Obter worktree para isolamento
+        cwd, branch_name, worktree_path = await get_worktree_cwd(
+            card_id, project_path, session
+        )
+        if worktree_path:
+            print(f"[Agent] Using worktree isolation: {cwd}")
+        else:
+            print(f"[Agent] Using project directory (no worktree): {cwd}")
 
     # Mapear nome de modelo para valor do SDK
     model_map = {
@@ -332,10 +401,21 @@ async def execute_implement(
         )
         active_project = result.scalar_one_or_none()
         if active_project:
-            cwd = active_project.path
-            print(f"[Agent] Found active project, using project directory: {cwd}")
+            project_path = active_project.path
+            print(f"[Agent] Found active project: {project_path}")
         else:
-            print(f"[Agent] No active project found, using default cwd: {cwd}")
+            # Fallback: usar o diretório raiz do orquestrator-agent
+            project_path = str(Path(__file__).parent.parent.parent)
+            print(f"[Agent] No active project, using root project: {project_path}")
+
+        # Obter worktree para isolamento
+        cwd, branch_name, worktree_path = await get_worktree_cwd(
+            card_id, project_path, session
+        )
+        if worktree_path:
+            print(f"[Agent] Using worktree isolation: {cwd}")
+        else:
+            print(f"[Agent] Using project directory (no worktree): {cwd}")
 
     # Mapear nome de modelo para valor do SDK
     model_map = {
@@ -584,10 +664,21 @@ async def execute_test_implementation(
         )
         active_project = result.scalar_one_or_none()
         if active_project:
-            cwd = active_project.path
-            print(f"[Agent] Found active project, using project directory: {cwd}")
+            project_path = active_project.path
+            print(f"[Agent] Found active project: {project_path}")
         else:
-            print(f"[Agent] No active project found, using default cwd: {cwd}")
+            # Fallback: usar o diretório raiz do orquestrator-agent
+            project_path = str(Path(__file__).parent.parent.parent)
+            print(f"[Agent] No active project, using root project: {project_path}")
+
+        # Obter worktree para isolamento
+        cwd, branch_name, worktree_path = await get_worktree_cwd(
+            card_id, project_path, session
+        )
+        if worktree_path:
+            print(f"[Agent] Using worktree isolation: {cwd}")
+        else:
+            print(f"[Agent] Using project directory (no worktree): {cwd}")
 
     # Mapear nome de modelo para valor do SDK
     model_map = {
@@ -845,10 +936,21 @@ async def execute_review(
         )
         active_project = result.scalar_one_or_none()
         if active_project:
-            cwd = active_project.path
-            print(f"[Agent] Found active project, using project directory: {cwd}")
+            project_path = active_project.path
+            print(f"[Agent] Found active project: {project_path}")
         else:
-            print(f"[Agent] No active project found, using default cwd: {cwd}")
+            # Fallback: usar o diretório raiz do orquestrator-agent
+            project_path = str(Path(__file__).parent.parent.parent)
+            print(f"[Agent] No active project, using root project: {project_path}")
+
+        # Obter worktree para isolamento
+        cwd, branch_name, worktree_path = await get_worktree_cwd(
+            card_id, project_path, session
+        )
+        if worktree_path:
+            print(f"[Agent] Using worktree isolation: {cwd}")
+        else:
+            print(f"[Agent] Using project directory (no worktree): {cwd}")
 
     # Mapear nome de modelo para valor do SDK
     model_map = {

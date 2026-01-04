@@ -43,4 +43,8 @@ export const API_ENDPOINTS = {
     test: `${API_CONFIG.BASE_URL}/api/execute-test`,
     review: `${API_CONFIG.BASE_URL}/api/execute-review`,
   },
+
+  // Git worktree isolation endpoints
+  branches: `${API_CONFIG.BASE_URL}/api/branches`,
+  cleanupWorktrees: `${API_CONFIG.BASE_URL}/api/cleanup-orphan-worktrees`,
 } as const;

@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { Card, ColumnId, WorkflowStatus, WorkflowStage, ExecutionStatus } from '../types';
 import * as cardsApi from '../api/cards';
 import { updateWorkflowState } from '../api/cards';
+import { API_ENDPOINTS } from '../api/config';
 
 interface UseWorkflowAutomationProps {
   executePlan: (card: Card) => Promise<{ success: boolean; specPath?: string; error?: string }>;
@@ -131,10 +132,22 @@ export function useWorkflowAutomation({
         return;
       }
 
-      // Finalizar (review → done)
-      await cardsApi.moveCard(card.id, 'done');
-      onCardMove(card.id, 'done');
-      await updateStatus('completed', 'done');
+      // Tentar fazer merge antes de mover para done
+      const mergeResult = await handleCompletedReview(card.id);
+
+      if (mergeResult.success || !card.branchName) {
+        // Merge bem-sucedido ou card nao tem branch
+        await cardsApi.moveCard(card.id, 'done');
+        onCardMove(card.id, 'done');
+        await updateStatus('completed', 'done');
+      } else if (mergeResult.status === 'resolving') {
+        // IA esta resolvendo conflitos - manter em review
+        // O card sera movido para done automaticamente quando merge completar
+        await updateStatus('reviewing', 'review');
+      } else {
+        // Merge falhou
+        await updateStatus('error', 'review', mergeResult.error || 'Merge failed');
+      }
 
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
@@ -399,9 +412,52 @@ export function useWorkflowAutomation({
     });
   }, [initialStatuses, cards, executions, registerCompletionCallback, continueWorkflowFromStage]);
 
+  /**
+   * Tenta fazer merge quando card completa REVIEW.
+   * Card permanece em REVIEW com sub-estado de merge.
+   */
+  const handleCompletedReview = useCallback(async (cardId: string): Promise<{
+    success: boolean;
+    status?: string;
+    hasConflicts?: boolean;
+    error?: string;
+  }> => {
+    try {
+      // Iniciar merge
+      const response = await fetch(`${API_ENDPOINTS.cards}/${cardId}/merge`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: data.detail || 'Merge failed' };
+      }
+
+      if (data.status === 'resolving') {
+        // IA esta resolvendo conflitos
+        return { success: false, status: 'resolving', hasConflicts: true };
+      }
+
+      if (data.status === 'merged') {
+        return { success: true, status: 'merged' };
+      }
+
+      return { success: false, error: data.error || 'Unknown merge error' };
+
+    } catch (error) {
+      console.error('Failed to merge card:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }, []);
+
   return {
     runWorkflow,
     getWorkflowStatus,
     clearWorkflowStatus,
+    handleCompletedReview,
   };
 }

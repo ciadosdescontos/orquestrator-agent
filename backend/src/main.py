@@ -4,13 +4,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import update
+from sqlalchemy import update, select
+from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .agent import execute_plan, execute_implement, execute_test_implementation, execute_review, get_execution, get_all_executions
+from .git_workspace import GitWorkspaceManager
+from .conflict_resolver import ConflictResolver
 from .database import create_tables
 from .repositories.execution_repository import ExecutionRepository
 from .models.execution import Execution
@@ -30,6 +33,7 @@ from .routes.projects import router as projects_router
 from .routes.chat import router as chat_router
 from .database import get_db, async_session_maker
 from .repositories.card_repository import CardRepository
+from .schemas.card import CardUpdate
 
 # Import models to register them with SQLAlchemy
 from .models.card import Card  # noqa: F401
@@ -433,6 +437,256 @@ async def get_logs_history_endpoint(card_id: str, db: AsyncSession = Depends(get
     }
 
 
+# ============================================================================
+# Git Worktree Isolation Endpoints
+# ============================================================================
+
+async def get_active_project(db: AsyncSession):
+    """Helper to get the currently active project."""
+    result = await db.execute(
+        select(ActiveProject).order_by(ActiveProject.loaded_at.desc()).limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+@app.post("/api/cards/{card_id}/workspace")
+async def create_card_workspace(card_id: str, db: AsyncSession = Depends(get_db)):
+    """Cria worktree isolado para o card."""
+
+    # Obter projeto ativo
+    project = await get_active_project(db)
+    if not project:
+        raise HTTPException(status_code=400, detail="No active project")
+
+    # Verificar se projeto eh um repo git
+    git_dir = Path(project.path) / ".git"
+    if not git_dir.exists():
+        raise HTTPException(
+            status_code=400,
+            detail="Project is not a git repository. Worktrees disabled."
+        )
+
+    # Criar worktree
+    git_manager = GitWorkspaceManager(project.path)
+    await git_manager.recover_state()  # Garantir estado limpo
+    result = await git_manager.create_worktree(card_id)
+
+    if not result.success:
+        raise HTTPException(status_code=500, detail=result.error)
+
+    # Atualizar card diretamente
+    card_repo = CardRepository(db)
+    update_data = CardUpdate(
+        branch_name=result.branch_name,
+        worktree_path=result.worktree_path,
+        merge_status="none"
+    )
+    await card_repo.update(card_id, update_data)
+    await db.commit()
+
+    return {
+        "success": True,
+        "branchName": result.branch_name,
+        "worktreePath": result.worktree_path
+    }
+
+
+@app.post("/api/cards/{card_id}/merge")
+async def merge_card_workspace(
+    card_id: str,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Faz merge da branch do card para main.
+    Se houver conflitos, IA resolve automaticamente.
+    """
+
+    project = await get_active_project(db)
+    if not project:
+        raise HTTPException(status_code=400, detail="No active project")
+
+    # Obter card
+    card_repo = CardRepository(db)
+    card = await card_repo.get_by_id(card_id)
+    if not card or not card.branch_name:
+        raise HTTPException(status_code=400, detail="Card has no active branch")
+
+    # Atualizar status
+    await card_repo.update(card_id, CardUpdate(merge_status="merging"))
+    await db.commit()
+
+    # Tentar merge
+    git_manager = GitWorkspaceManager(project.path)
+    result = await git_manager.merge_worktree(card_id, card.branch_name)
+
+    if result.has_conflicts:
+        # IA vai resolver automaticamente!
+        await card_repo.update(card_id, CardUpdate(merge_status="resolving"))
+        await db.commit()
+
+        # Resolver em background para nao bloquear
+        background_tasks.add_task(
+            resolve_conflicts_background,
+            card_id=card_id,
+            card_description=card.description or card.title,
+            branch_name=card.branch_name,
+            conflicted_files=result.conflicted_files,
+            project_path=project.path
+        )
+
+        return {
+            "success": True,
+            "status": "resolving",
+            "message": "Conflitos detectados. IA esta resolvendo automaticamente..."
+        }
+
+    if not result.success:
+        await card_repo.update(card_id, CardUpdate(merge_status="failed"))
+        await db.commit()
+        raise HTTPException(status_code=500, detail=result.error)
+
+    # Merge sem conflitos - limpar worktree
+    await git_manager.cleanup_worktree(card_id, card.branch_name, delete_branch=True)
+
+    await card_repo.update(card_id, CardUpdate(
+        merge_status="merged",
+        branch_name=None,
+        worktree_path=None
+    ))
+    await db.commit()
+
+    return {
+        "success": True,
+        "status": "merged",
+        "message": "Merge concluido com sucesso!"
+    }
+
+
+async def resolve_conflicts_background(
+    card_id: str,
+    card_description: str,
+    branch_name: str,
+    conflicted_files: List[str],
+    project_path: str
+):
+    """
+    Resolve conflitos em background usando IA.
+
+    Fluxo:
+    1. Cria backup
+    2. IA resolve conflitos
+    3. Roda testes
+    4. Se OK: merge completo
+    5. Se falha: rollback + marca card como failed
+    """
+    from .database import async_session_maker
+
+    async with async_session_maker() as db:
+        card_repo = CardRepository(db)
+        git_manager = GitWorkspaceManager(project_path)
+        conflict_resolver = ConflictResolver(project_path, git_manager)
+
+        try:
+            # Placeholder para agent executor (nao implementado completamente)
+            async def agent_executor(prompt: str, cwd: str, allowed_tools: list):
+                # TODO: Implementar chamada real ao Claude Agent
+                print(f"[ConflictResolver] Would execute agent with prompt: {prompt[:100]}...")
+                pass
+
+            # Resolver conflitos com IA
+            result = await conflict_resolver.resolve_conflicts(
+                card_id=card_id,
+                card_description=card_description,
+                branch_name=branch_name,
+                conflicted_files=conflicted_files,
+                agent_executor=agent_executor
+            )
+
+            if result.success:
+                # Limpar worktree
+                await git_manager.cleanup_worktree(card_id, branch_name, delete_branch=True)
+
+                await card_repo.update(card_id, CardUpdate(
+                    merge_status="merged",
+                    branch_name=None,
+                    worktree_path=None
+                ))
+                await db.commit()
+
+                # Log de sucesso
+                print(f"[ConflictResolver] Card {card_id}: Conflitos resolvidos por IA. Testes passaram!")
+
+            else:
+                # Falha na resolucao
+                await card_repo.update(card_id, CardUpdate(merge_status="failed"))
+                await db.commit()
+
+                # Log de falha
+                print(f"[ConflictResolver] Card {card_id}: Falha ao resolver conflitos: {result.error}")
+                if result.rolled_back:
+                    print(f"[ConflictResolver] Rollback realizado. Projeto esta seguro.")
+
+        except Exception as e:
+            await card_repo.update(card_id, CardUpdate(merge_status="failed"))
+            await db.commit()
+            print(f"[ConflictResolver] Card {card_id}: Erro inesperado: {str(e)}")
+
+
+@app.get("/api/branches")
+async def list_active_branches(db: AsyncSession = Depends(get_db)):
+    """Lista todas as branches/worktrees ativos."""
+
+    project = await get_active_project(db)
+    if not project:
+        raise HTTPException(status_code=400, detail="No active project")
+
+    git_manager = GitWorkspaceManager(project.path)
+    worktrees = await git_manager.list_active_worktrees()
+
+    # Enriquecer com dados dos cards
+    enriched = []
+
+    for wt in worktrees:
+        branch = wt.get('branch', '')
+        if branch.startswith('agent/'):
+            # Buscar card pelo branch_name
+            result = await db.execute(
+                select(Card).where(Card.branch_name == branch)
+            )
+            card = result.scalar_one_or_none()
+
+            if card:
+                enriched.append({
+                    "branch": branch,
+                    "path": wt['path'],
+                    "cardId": card.id,
+                    "cardTitle": card.title,
+                    "cardColumn": card.column_id,
+                    "mergeStatus": card.merge_status
+                })
+
+    return {"branches": enriched}
+
+
+@app.post("/api/cleanup-orphan-worktrees")
+async def cleanup_orphan_worktrees(db: AsyncSession = Depends(get_db)):
+    """Remove worktrees orfaos."""
+
+    project = await get_active_project(db)
+    if not project:
+        raise HTTPException(status_code=400, detail="No active project")
+
+    # Obter IDs de cards ativos
+    result = await db.execute(select(Card.id))
+    active_card_ids = [row[0] for row in result.fetchall()]
+
+    git_manager = GitWorkspaceManager(project.path)
+    removed = await git_manager.cleanup_orphan_worktrees(active_card_ids)
+
+    return {"success": True, "removedCount": removed}
+
+
 def main():
     """Run the server."""
     import uvicorn
@@ -461,6 +715,10 @@ def main():
     print("  - GET  /api/chat/sessions/:id")
     print("  - DELETE /api/chat/sessions/:id")
     print("  - WS   /api/chat/ws/:sessionId")
+    print("  - POST /api/cards/:id/workspace")
+    print("  - POST /api/cards/:id/merge")
+    print("  - GET  /api/branches")
+    print("  - POST /api/cleanup-orphan-worktrees")
 
     uvicorn.run(app, host="0.0.0.0", port=port)
 

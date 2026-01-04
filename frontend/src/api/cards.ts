@@ -2,7 +2,7 @@
  * API client for cards endpoints.
  */
 
-import type { Card, CardImage, ColumnId, ModelType, ActiveExecution, ExecutionLog } from '../types';
+import type { Card, CardImage, ColumnId, ModelType, ActiveExecution, ExecutionLog, MergeStatus } from '../types';
 import { API_ENDPOINTS } from './config';
 
 interface CardResponse {
@@ -22,6 +22,10 @@ interface CardResponse {
     workflowStage?: string;
     workflowError?: string;
   };
+  // Campos para worktree isolation
+  branchName?: string;
+  worktreePath?: string;
+  mergeStatus?: MergeStatus;
 }
 
 export interface WorkflowStateUpdate {
@@ -52,6 +56,10 @@ function mapCardResponseToCard(response: CardResponse): Card {
     modelReview: response.modelReview,
     images: response.images,
     activeExecution: response.activeExecution,
+    // Campos para worktree isolation
+    branchName: response.branchName,
+    worktreePath: response.worktreePath,
+    mergeStatus: response.mergeStatus || 'none',
   };
 }
 

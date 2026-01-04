@@ -1,6 +1,9 @@
 export type ColumnId = 'backlog' | 'plan' | 'implement' | 'test' | 'review' | 'done' | 'archived' | 'cancelado';
 export type ModelType = 'opus-4.5' | 'sonnet-4.5' | 'haiku-4.5';
 
+// Status de merge - IA resolve conflitos automaticamente
+export type MergeStatus = 'none' | 'merging' | 'resolving' | 'merged' | 'failed';
+
 export interface CardImage {
   id: string;
   filename: string;
@@ -29,10 +32,14 @@ export interface Card {
   modelTest: ModelType;
   modelReview: ModelType;
   images?: CardImage[];
-  activeExecution?: ActiveExecution; // Execução ativa persistida no banco
-  parentCardId?: string; // ID do card pai (quando for um card de correção)
-  isFixCard?: boolean; // Indica se é um card de correção
-  testErrorContext?: string; // Contexto do erro que gerou o card de correção
+  activeExecution?: ActiveExecution; // Execucao ativa persistida no banco
+  parentCardId?: string; // ID do card pai (quando for um card de correcao)
+  isFixCard?: boolean; // Indica se eh um card de correcao
+  testErrorContext?: string; // Contexto do erro que gerou o card de correcao
+  // Campos para worktree isolation
+  branchName?: string;
+  worktreePath?: string;
+  mergeStatus: MergeStatus;
 }
 
 export interface Column {
@@ -151,4 +158,14 @@ export interface ExecutionHistory {
 export interface CardExecutionHistory {
   cardId: string;
   history: ExecutionHistory[];
+}
+
+// Interface para branches ativos
+export interface ActiveBranch {
+  branch: string;
+  path: string;
+  cardId: string;
+  cardTitle: string;
+  cardColumn: string;
+  mergeStatus: MergeStatus;
 }
