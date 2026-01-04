@@ -269,7 +269,7 @@ function App() {
     if (!isValidTransition(startColumn, finalColumnId)) {
       // Reverter para coluna original
       moveCard(activeId, startColumn);
-      alert(`Transição inválida: ${startColumn} → ${finalColumnId}.\nSiga o fluxo SDLC: backlog → plan → in-progress → test → review → done`);
+      alert(`Transição inválida: ${startColumn} → ${finalColumnId}.\nSiga o fluxo SDLC: backlog → plan → implement → test → review → done`);
       return;
     }
 
@@ -294,22 +294,22 @@ function App() {
         updateCardSpecPath(card.id, result.specPath);
         console.log(`[App] Spec path saved: ${result.specPath}`);
       }
-    } else if (startColumn === 'plan' && finalColumnId === 'in-progress') {
+    } else if (startColumn === 'plan' && finalColumnId === 'implement') {
       // Buscar o card atualizado (pode ter specPath agora)
       const updatedCard = cards.find(c => c.id === activeId);
       if (updatedCard?.specPath) {
-        console.log(`[App] Card moved from plan to in-progress: ${updatedCard.title}`);
+        console.log(`[App] Card moved from plan to implement: ${updatedCard.title}`);
         console.log(`[App] Executing /implement with spec: ${updatedCard.specPath}`);
         executeImplement(updatedCard);
       } else {
         alert('Este card não possui um plano associado. Execute primeiro a etapa de planejamento.');
         moveCard(activeId, startColumn);
       }
-    } else if (startColumn === 'in-progress' && finalColumnId === 'test') {
-      // Trigger: in-progress → test - Executar /test-implementation
+    } else if (startColumn === 'implement' && finalColumnId === 'test') {
+      // Trigger: implement → test - Executar /test-implementation
       const updatedCard = cards.find(c => c.id === activeId);
       if (updatedCard?.specPath) {
-        console.log(`[App] Card moved from in-progress to test: ${updatedCard.title}`);
+        console.log(`[App] Card moved from implement to test: ${updatedCard.title}`);
         console.log(`[App] Executing /test-implementation with spec: ${updatedCard.specPath}`);
         executeTest(updatedCard);
       } else {

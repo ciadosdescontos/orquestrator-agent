@@ -131,13 +131,13 @@
   color: rgba(0, 212, 255, 0.8);
 }
 
-/* IN-PROGRESS - Bright Cyan */
-.column_in-progress {
+/* IMPLEMENT - Bright Cyan */
+.column_implement {
   border-top: 3px solid rgba(0, 212, 255, 0.9);
   background: rgba(0, 212, 255, 0.03);
 }
 
-.column_in-progress .title {
+.column_implement .title {
   color: var(--accent-cyan);
 }
 

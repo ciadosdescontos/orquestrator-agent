@@ -1,4 +1,4 @@
-export type ColumnId = 'backlog' | 'plan' | 'in-progress' | 'test' | 'review' | 'done' | 'archived' | 'cancelado';
+export type ColumnId = 'backlog' | 'plan' | 'implement' | 'test' | 'review' | 'done' | 'archived' | 'cancelado';
 export type ModelType = 'opus-4.5' | 'sonnet-4.5' | 'haiku-4.5';
 
 export interface CardImage {
@@ -61,7 +61,7 @@ export interface ExecutionStatus {
 export const COLUMNS: Column[] = [
   { id: 'backlog', title: 'Backlog' },
   { id: 'plan', title: 'Plan' },
-  { id: 'in-progress', title: 'In Progress' },
+  { id: 'implement', title: 'Implement' },
   { id: 'test', title: 'Test' },
   { id: 'review', title: 'Review' },
   { id: 'done', title: 'Done' },
@@ -72,8 +72,8 @@ export const COLUMNS: Column[] = [
 // Transições permitidas no fluxo SDLC
 export const ALLOWED_TRANSITIONS: Record<ColumnId, ColumnId[]> = {
   'backlog': ['plan', 'cancelado'],
-  'plan': ['in-progress', 'cancelado'],
-  'in-progress': ['test', 'cancelado'],
+  'plan': ['implement', 'cancelado'],
+  'implement': ['test', 'cancelado'],
   'test': ['review', 'cancelado'],
   'review': ['done', 'cancelado'],
   'done': ['archived', 'cancelado'],
