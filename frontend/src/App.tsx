@@ -1,21 +1,20 @@
 import { useState, useRef, useEffect } from 'react';
-import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DragEndEvent, DragOverEvent, DragStartEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Card as CardType, ColumnId, COLUMNS, isValidTransition, ExecutionStatus, Project, WorkflowStatus, WorkflowStage } from './types';
-import { Board } from './components/Board/Board';
-import { Card } from './components/Card/Card';
-import { ProjectLoader } from './components/ProjectLoader/ProjectLoader';
-import { ProjectSwitcher } from './components/ProjectSwitcher';
-import { NewTaskButton } from './components/NewTaskButton/NewTaskButton';
 import { useAgentExecution } from './hooks/useAgentExecution';
 import { useWorkflowAutomation } from './hooks/useWorkflowAutomation';
 import { useChat } from './hooks/useChat';
-import Chat from './components/Chat/Chat';
-import { TabNavigation } from './components/TabNavigation/TabNavigation';
 import * as cardsApi from './api/cards';
 import { getCurrentProject } from './api/projects';
+import WorkspaceLayout, { ModuleType } from './layouts/WorkspaceLayout';
+import HomePage from './pages/HomePage';
+import KanbanPage from './pages/KanbanPage';
+import ChatPage from './pages/ChatPage';
+import SettingsPage from './pages/SettingsPage';
 import styles from './App.module.css';
 
 function App() {
+  const [currentView, setCurrentView] = useState<ModuleType>('dashboard');
   const [cards, setCards] = useState<CardType[]>([]);
   const [activeCard, setActiveCard] = useState<CardType | null>(null);
   const [activeTab, setActiveTab] = useState<'kanban' | 'chat'>('kanban');
@@ -357,76 +356,41 @@ function App() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className={styles.app}>
-        <header className={styles.header}>
-          <h1 className={styles.title}>Board Kanban</h1>
-        </header>
-        <main className={styles.main}>
-          <p>Carregando cards...</p>
-        </main>
-      </div>
-    );
-  }
+  const renderView = () => {
+    switch (currentView) {
+      case 'dashboard':
+        return <HomePage cards={cards} onNavigate={setCurrentView} />;
 
-  return (
-    <div className={styles.app}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>Board Kanban</h1>
-        <TabNavigation
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          chatUnreadCount={chatState.unreadCount}
-        />
-        <div className={styles.projectActions}>
-          <NewTaskButton />
-          <ProjectSwitcher
-            currentProject={currentProject}
-            onProjectSwitch={setCurrentProject}
-          />
-          <ProjectLoader
-            currentProject={currentProject}
-            onProjectLoad={setCurrentProject}
-          />
-        </div>
-      </header>
-      <main className={styles.main}>
-        {activeTab === 'kanban' ? (
-          <DndContext
+      case 'kanban':
+        return (
+          <KanbanPage
+            columns={COLUMNS}
+            cards={cards}
+            activeCard={activeCard}
             sensors={sensors}
-            collisionDetection={closestCorners}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
-          >
-            <Board
-              columns={COLUMNS}
-              cards={cards}
-              onAddCard={addCard}
-              onRemoveCard={removeCard}
-              onUpdateCard={updateCard}
-              getExecutionStatus={getExecutionStatus}
-              getWorkflowStatus={getWorkflowStatus}
-              onRunWorkflow={runWorkflow}
-              isArchivedCollapsed={isArchivedCollapsed}
-              onToggleArchivedCollapse={() => setIsArchivedCollapsed(!isArchivedCollapsed)}
-              isCanceladoCollapsed={isCanceladoCollapsed}
-              onToggleCanceladoCollapse={() => setIsCanceladoCollapsed(!isCanceladoCollapsed)}
-              fetchLogsHistory={fetchLogsHistory}
-            />
-            <DragOverlay>
-              {activeCard ? (
-                <Card
-                  card={activeCard}
-                  onRemove={() => {}}
-                  isDragging
-                />
-              ) : null}
-            </DragOverlay>
-          </DndContext>
-        ) : (
-          <Chat
+            onAddCard={addCard}
+            onRemoveCard={removeCard}
+            onUpdateCard={updateCard}
+            getExecutionStatus={getExecutionStatus}
+            getWorkflowStatus={getWorkflowStatus}
+            onRunWorkflow={runWorkflow}
+            isArchivedCollapsed={isArchivedCollapsed}
+            onToggleArchivedCollapse={() => setIsArchivedCollapsed(!isArchivedCollapsed)}
+            isCanceladoCollapsed={isCanceladoCollapsed}
+            onToggleCanceladoCollapse={() => setIsCanceladoCollapsed(!isCanceladoCollapsed)}
+            currentProject={currentProject}
+            onProjectSwitch={setCurrentProject}
+            onProjectLoad={setCurrentProject}
+            fetchLogsHistory={fetchLogsHistory}
+          />
+        );
+
+      case 'chat':
+        return (
+          <ChatPage
             messages={chatState.session?.messages || []}
             isLoading={chatState.isLoading}
             error={chatState.error}
@@ -434,11 +398,32 @@ function App() {
             selectedModel={chatState.selectedModel}
             onModelChange={handleModelChange}
           />
-        )}
-      </main>
+        );
 
+      case 'settings':
+        return <SettingsPage />;
+
+      default:
+        return <HomePage cards={cards} onNavigate={setCurrentView} />;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className={styles.app}>
+        <div className={styles.loader}>
+          <div className={styles.loaderSpinner}></div>
+          <p>Carregando workspace...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <WorkspaceLayout currentModule={currentView} onNavigate={setCurrentView}>
+      {renderView()}
       <div id="modal-root" />
-    </div>
+    </WorkspaceLayout>
   );
 }
 
