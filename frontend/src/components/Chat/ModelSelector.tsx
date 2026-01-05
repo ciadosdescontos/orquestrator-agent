@@ -78,8 +78,8 @@ export const AVAILABLE_MODELS: AIModel[] = [
   },
   // Modelos Gemini
   {
-    id: 'gemini-1.5-pro',
-    name: 'Gemini 1.5 Pro',
+    id: 'gemini-3-pro',
+    name: 'Gemini 3 Pro',
     displayName: 'Gemini Pro',
     provider: 'google',
     maxTokens: 1000000,
@@ -90,25 +90,14 @@ export const AVAILABLE_MODELS: AIModel[] = [
     badge: 'Long Context'
   },
   {
-    id: 'gemini-1.5-flash',
-    name: 'Gemini 1.5 Flash',
+    id: 'gemini-3-flash',
+    name: 'Gemini 3 Flash',
     displayName: 'Gemini Flash',
     provider: 'google',
     maxTokens: 1000000,
     description: 'Fast and efficient model for quick tasks',
     performance: 'fastest',
     icon: '⚡',
-    accent: 'google'
-  },
-  {
-    id: 'gemini-1.0-pro',
-    name: 'Gemini 1.0 Pro',
-    displayName: 'Gemini 1.0',
-    provider: 'google',
-    maxTokens: 32000,
-    description: 'Balanced model for general tasks',
-    performance: 'balanced',
-    icon: '💎',
     accent: 'google'
   }
 ];

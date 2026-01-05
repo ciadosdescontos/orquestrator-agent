@@ -2,12 +2,12 @@
 name = "implement"
 description = "Implementa um plano de specs/*.md gerado pelo comando /plan. Lê o plano, implementa cada item e marca como concluído."
 argument_hint = "[caminho/para/spec.md]"
-model = "gemini-1.5-pro"
+model = "gemini-3-pro-preview"
 allowed_tools = ["Read", "Glob", "Grep", "Write", "Edit", "Bash"]
 
 [prompt]
 content = """
-**Nota:** O modelo Gemini usado para este comando pode ser configurado por card na UI. O padrão é Gemini 1.5 Pro.
+**Nota:** O modelo Gemini usado para este comando pode ser configurado por card na UI. O padrão é Gemini 3 Pro.
 
 # Implement
 

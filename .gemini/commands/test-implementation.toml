@@ -2,12 +2,12 @@
 name = "test-implementation"
 description = "Valida e testa o que foi implementado pelo comando /implement. Verifica arquivos, executa testes e gera relatório."
 argument_hint = "[caminho/para/spec.md]"
-model = "gemini-1.5-flash"
+model = "gemini-3-flash-preview"
 allowed_tools = ["Read", "Glob", "Grep", "Bash"]
 
 [prompt]
 content = """
-**Nota:** O modelo Gemini usado para este comando pode ser configurado por card na UI. O padrão é Gemini 1.5 Flash.
+**Nota:** O modelo Gemini usado para este comando pode ser configurado por card na UI. O padrão é Gemini 3 Flash.
 
 # Test Implementation
 

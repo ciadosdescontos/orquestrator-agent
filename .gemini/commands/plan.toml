@@ -2,12 +2,12 @@
 name = "plan"
 description = "Cria planos de implementação detalhados para features, bugs ou refatorações. Use antes de implementar tarefas complexas."
 argument_hint = "[descrição da tarefa]"
-model = "gemini-1.5-pro"
+model = "gemini-3-pro-preview"
 allowed_tools = ["Read", "Glob", "Grep", "Write", "Task"]
 
 [prompt]
 content = """
-**Nota:** O modelo Gemini usado para este comando pode ser configurado por card na UI. O padrão é Gemini 1.5 Pro.
+**Nota:** O modelo Gemini usado para este comando pode ser configurado por card na UI. O padrão é Gemini 3 Pro.
 
 # Plan
 

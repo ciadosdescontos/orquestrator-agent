@@ -193,12 +193,12 @@ async def execute_plan_gemini(
 
     gemini = GeminiAgent(model=model)
 
-    # Prepara argumentos
-    arguments = f"{title}: {description}"
+    # Prepara prompt
+    prompt = f"Create a detailed implementation plan for:\n\nTitle: {title}\nDescription: {description}"
     if images:
-        arguments += "\n\nImagens anexadas:\n"
+        prompt += "\n\nAttached images:\n"
         for img in images:
-            arguments += f"- {img.get('filename', 'image')}: {img.get('path', '')}\n"
+            prompt += f"- {img.get('filename', 'image')}: {img.get('path', '')}\n"
 
     # Usar repository se disponível
     repo = None
@@ -239,8 +239,7 @@ async def execute_plan_gemini(
     full_response = ""
     try:
         async for chunk in gemini.execute_command(
-            command="plan",
-            arguments=arguments,
+            prompt=prompt,
             cwd=Path(cwd),
             stream=True
         ):

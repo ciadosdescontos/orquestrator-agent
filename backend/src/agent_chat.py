@@ -33,12 +33,15 @@ class ClaudeAgentChat:
 
         Args:
             messages: List of conversation messages
-            model: Gemini model to use (e.g., "gemini-1.5-pro")
+            model: Gemini model to use (e.g., "gemini-3-pro", "gemini-3-flash")
             system_prompt: Optional system prompt
 
         Yields:
             str: Chunks of the response text as they arrive
         """
+        print(f"[ClaudeAgentChat] _stream_response_gemini called with model: {model}")
+        print(f"[ClaudeAgentChat] Number of messages: {len(messages)}")
+
         try:
             from .gemini_agent import GeminiAgent
 
@@ -48,6 +51,8 @@ class ClaudeAgentChat:
             from sqlalchemy import select
 
             cwd = Path.cwd()
+            print(f"[ClaudeAgentChat] Initial cwd: {cwd}")
+
             async with async_session_maker() as session:
                 result = await session.execute(
                     select(ActiveProject).order_by(ActiveProject.loaded_at.desc()).limit(1)
@@ -55,17 +60,27 @@ class ClaudeAgentChat:
                 active_project = result.scalar_one_or_none()
                 if active_project:
                     cwd = Path(active_project.path)
+                    print(f"[ClaudeAgentChat] Using project cwd: {cwd}")
 
             # Initialize Gemini agent
+            print(f"[ClaudeAgentChat] Initializing GeminiAgent with model: {model}")
             gemini = GeminiAgent(model=model)
 
             # Stream response
-            async for chunk in gemini.chat_completion(messages, system_prompt):
+            print(f"[ClaudeAgentChat] Starting stream...")
+            chunk_count = 0
+            async for chunk in gemini.chat_completion(messages, system_prompt, cwd):
+                chunk_count += 1
+                print(f"[ClaudeAgentChat] Yielding chunk {chunk_count}: {chunk[:50]}...")
                 yield chunk
+
+            print(f"[ClaudeAgentChat] Stream completed. Total chunks: {chunk_count}")
 
         except Exception as e:
             error_msg = f"Error in Gemini Agent: {str(e)}"
             print(f"[ClaudeAgentChat] {error_msg}")
+            import traceback
+            traceback.print_exc()
             raise RuntimeError(error_msg)
 
     async def stream_response(
@@ -80,14 +95,17 @@ class ClaudeAgentChat:
 
         Args:
             messages: List of conversation messages in format [{"role": "user/assistant", "content": "..."}]
-            model: AI model to use (e.g., "opus-4.5", "sonnet-4.5", "haiku-4.5", "gemini-1.5-pro")
+            model: AI model to use (e.g., "opus-4.5", "sonnet-4.5", "haiku-4.5", "gemini-3-pro", "gemini-3-flash")
             system_prompt: Optional system prompt to set context
 
         Yields:
             str: Chunks of the response text as they arrive
         """
+        print(f"[ClaudeAgentChat] stream_response called with model: {model}")
+
         # Check if it's a Gemini model
         if model.startswith("gemini"):
+            print(f"[ClaudeAgentChat] Detected Gemini model, routing to _stream_response_gemini")
             async for chunk in self._stream_response_gemini(messages, model, system_prompt):
                 yield chunk
             return

@@ -2,12 +2,12 @@
 name = "review"
 description = "Revisa a implementacao comparando com a spec original. Verifica se faz sentido, se faltou algo, e se segue os padroes definidos."
 argument_hint = "[caminho/para/spec.md]"
-model = "gemini-1.5-flash"
+model = "gemini-3-flash-preview"
 allowed_tools = ["Read", "Glob", "Grep"]
 
 [prompt]
 content = """
-**Nota:** O modelo Gemini usado para este comando pode ser configurado por card na UI. O padrão é Gemini 1.5 Flash.
+**Nota:** O modelo Gemini usado para este comando pode ser configurado por card na UI. O padrão é Gemini 3 Flash.
 
 # Review Implementation
 

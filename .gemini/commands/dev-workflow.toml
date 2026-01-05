@@ -2,7 +2,7 @@
 name = "dev-workflow"
 description = "Workflow completo de desenvolvimento (plan → implement → test → review). Use para features ou bugs."
 argument_hint = "[descrição da feature ou bug]"
-model = "gemini-1.5-pro"
+model = "gemini-3-pro-preview"
 allowed_tools = ["Read", "Glob", "Grep", "Write", "Edit", "Bash", "Task"]
 
 [prompt]

@@ -1,7 +1,7 @@
 export type ColumnId = 'backlog' | 'plan' | 'implement' | 'test' | 'review' | 'done' | 'archived' | 'cancelado';
 export type ModelType =
   | 'opus-4.5' | 'sonnet-4.5' | 'haiku-4.5'  // Claude models
-  | 'gemini-1.5-pro' | 'gemini-1.5-flash' | 'gemini-1.0-pro';  // Gemini models
+  | 'gemini-3-pro' | 'gemini-3-flash';  // Gemini models
 
 export interface CardImage {
   id: string;

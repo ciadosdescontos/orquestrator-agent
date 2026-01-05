@@ -1,7 +1,7 @@
 [metadata]
 name = "question"
 description = "Answer questions about the project structure and documentation without coding"
-model = "gemini-1.5-flash"
+model = "gemini-3-flash-preview"
 allowed_tools = ["Bash", "Read", "Glob", "Grep"]
 
 [prompt]
