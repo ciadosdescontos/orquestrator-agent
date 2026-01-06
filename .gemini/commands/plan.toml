@@ -1,4 +1,4 @@
-[metadata]
+[description]
 name = "plan"
 description = "Cria planos de implementação detalhados para features, bugs ou refatorações. Use antes de implementar tarefas complexas."
 argument_hint = "[descrição da tarefa]"

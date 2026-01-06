@@ -41,11 +41,14 @@ class CardBase(BaseModel):
 
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
-    model_plan: ModelType = "opus-4.5"
-    model_implement: ModelType = "opus-4.5"
-    model_test: ModelType = "opus-4.5"
-    model_review: ModelType = "opus-4.5"
+    model_plan: ModelType = Field(default="opus-4.5", alias="modelPlan")
+    model_implement: ModelType = Field(default="opus-4.5", alias="modelImplement")
+    model_test: ModelType = Field(default="opus-4.5", alias="modelTest")
+    model_review: ModelType = Field(default="opus-4.5", alias="modelReview")
     images: Optional[List[CardImage]] = None
+
+    class Config:
+        populate_by_name = True
 
 
 class CardCreate(CardBase):
