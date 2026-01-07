@@ -2,7 +2,7 @@
  * API client for cards endpoints.
  */
 
-import type { Card, CardImage, ColumnId, ModelType, ActiveExecution, ExecutionLog, MergeStatus } from '../types';
+import type { Card, CardImage, ColumnId, ModelType, ActiveExecution, ExecutionLog, MergeStatus, TokenStats } from '../types';
 import { API_ENDPOINTS } from './config';
 
 interface CardResponse {
@@ -26,6 +26,8 @@ interface CardResponse {
   branchName?: string;
   worktreePath?: string;
   mergeStatus?: MergeStatus;
+  // Token stats
+  tokenStats?: TokenStats;
 }
 
 export interface WorkflowStateUpdate {
@@ -60,6 +62,8 @@ function mapCardResponseToCard(response: CardResponse): Card {
     branchName: response.branchName,
     worktreePath: response.worktreePath,
     mergeStatus: response.mergeStatus || 'none',
+    // Token stats
+    tokenStats: response.tokenStats,
   };
 }
 
@@ -87,7 +91,8 @@ export async function createCard(
   modelPlan: ModelType,
   modelImplement: ModelType,
   modelTest: ModelType,
-  modelReview: ModelType
+  modelReview: ModelType,
+  baseBranch?: string
 ): Promise<Card> {
   const response = await fetch(API_ENDPOINTS.cards, {
     method: 'POST',
@@ -101,6 +106,7 @@ export async function createCard(
       modelImplement,
       modelTest,
       modelReview,
+      baseBranch,
     }),
   });
 

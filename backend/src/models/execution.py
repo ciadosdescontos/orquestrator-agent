@@ -29,6 +29,12 @@ class Execution(Base):
     workflow_stage = Column(String, nullable=True)  # plan, implement, test, review, completed
     workflow_error = Column(Text, nullable=True)  # erro do workflow se houver
 
+    # Campos para token tracking
+    input_tokens = Column(Integer, nullable=True)
+    output_tokens = Column(Integer, nullable=True)
+    total_tokens = Column(Integer, nullable=True)
+    model_used = Column(String, nullable=True)  # Para rastrear qual modelo foi usado
+
     # Relacionamentos
     card = relationship("Card", back_populates="executions")
     logs = relationship("ExecutionLog", back_populates="execution", cascade="all, delete-orphan")

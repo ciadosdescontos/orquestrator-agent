@@ -1,21 +1,13 @@
-[metadata]
-name = "implement"
 description = "Implementa um plano de specs/*.md gerado pelo comando /plan. Lê o plano, implementa cada item e marca como concluído."
-argument_hint = "[caminho/para/spec.md]"
-model = "gemini-3-pro-preview"
-allowed_tools = ["Read", "Glob", "Grep", "Write", "Edit", "Bash"]
 
-[prompt]
-content = """
-**Nota:** O modelo Gemini usado para este comando pode ser configurado por card na UI. O padrão é Gemini 3 Pro.
-
+prompt = """
 # Implement
 
-Implemente o plano especificado em: {ARGUMENTS}
+Implemente o plano especificado em: {{args}}
 
 ## Instruções
 
-1. Se `{ARGUMENTS}` estiver vazio, liste os arquivos disponíveis em `specs/` e pergunte qual implementar
+1. Se `{{args}}` estiver vazio, liste os arquivos disponíveis em `specs/` e pergunte qual implementar
 2. Leia o arquivo de plano especificado
 3. Analise todas as seções do plano
 4. Implemente cada item na ordem definida

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..repositories.card_repository import CardRepository
+from ..repositories.execution_repository import ExecutionRepository
 from ..schemas.card import (
     CardCreate,
     CardUpdate,
@@ -15,15 +16,19 @@ from ..schemas.card import (
     CardSingleResponse,
     CardDeleteResponse,
     ActiveExecution,
+    DiffStats,
+    TokenStats,
 )
+from ..services.diff_analyzer import DiffAnalyzer
 
 router = APIRouter(prefix="/api/cards", tags=["cards"])
 
 
 @router.get("", response_model=CardsListResponse)
 async def get_all_cards(db: AsyncSession = Depends(get_db)):
-    """Get all cards with active executions."""
+    """Get all cards with active executions and token statistics."""
     repo = CardRepository(db)
+    execution_repo = ExecutionRepository(db)
     cards = await repo.get_all()
 
     # Para cada card, buscar execução ativa se houver
@@ -66,6 +71,11 @@ async def get_all_cards(db: AsyncSession = Depends(get_db)):
                     workflowStage=workflow_stage,
                     workflowError=workflow_error
                 )
+
+        # Buscar estatísticas de tokens para o card
+        token_stats = await execution_repo.get_token_stats_for_card(card.id)
+        if token_stats and token_stats["totalTokens"] > 0:
+            card_dict["token_stats"] = TokenStats(**token_stats)
 
         cards_with_execution.append(CardResponse.model_validate(card_dict))
 
@@ -142,6 +152,49 @@ async def update_spec_path(
 
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
+
+    return CardSingleResponse(card=CardResponse.model_validate(card))
+
+
+@router.post("/{card_id}/capture-diff", response_model=CardSingleResponse)
+async def capture_diff(card_id: str, db: AsyncSession = Depends(get_db)):
+    """Capture diff statistics for a card when it moves to review/done."""
+    repo = CardRepository(db)
+    card = await repo.get_by_id(card_id)
+
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+
+    # Only capture diff for cards in review or done
+    if card.column_id not in ["review", "done"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Can only capture diff for cards in review or done columns"
+        )
+
+    # Check if card has worktree info
+    if not card.worktree_path or not card.branch_name:
+        raise HTTPException(
+            status_code=400,
+            detail="Card must have worktree information to capture diff"
+        )
+
+    # Capture diff
+    diff_analyzer = DiffAnalyzer()
+    diff_stats = await diff_analyzer.capture_diff(
+        card.worktree_path,
+        card.branch_name
+    )
+
+    if not diff_stats:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to capture diff statistics"
+        )
+
+    # Update card with diff stats
+    card_update = CardUpdate(diff_stats=diff_stats)
+    card = await repo.update(card_id, card_update)
 
     return CardSingleResponse(card=CardResponse.model_validate(card))
 

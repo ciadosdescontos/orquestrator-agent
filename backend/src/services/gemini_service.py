@@ -84,10 +84,10 @@ class GeminiService:
         full_prompt = f"""
 {plan_context}
 
-You are an AI assistant helping with software development tasks.
-Current working directory: {cwd}
+Você é um assistente de IA ajudando com tarefas de desenvolvimento de software.
+Diretório de trabalho atual: {cwd}
 
-Command: {command}
+Comando: {command}
 {content}
 """
 

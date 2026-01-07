@@ -1,23 +1,15 @@
-[description]
-name = "plan"
 description = "Cria planos de implementação detalhados para features, bugs ou refatorações. Use antes de implementar tarefas complexas."
-argument_hint = "[descrição da tarefa]"
-model = "gemini-3-pro-preview"
-allowed_tools = ["Read", "Glob", "Grep", "Write", "Task"]
 
-[prompt]
-content = """
-**Nota:** O modelo Gemini usado para este comando pode ser configurado por card na UI. O padrão é Gemini 3 Pro.
-
+prompt = """
 # Plan
 
-Crie um plano de implementação detalhado com base na solicitação do usuário: {ARGUMENTS}
+Crie um plano de implementação detalhado com base na solicitação do usuário: {{args}}
 
 Salve o planejamento em `specs/<nome_descritivo>.md`
 
 ## Instruções
 
-1. Se `{ARGUMENTS}` estiver vazio, pergunte ao usuário o que deseja implementar
+1. Se `{{args}}` estiver vazio, pergunte ao usuário o que deseja implementar
 2. Analise toda a codebase para entender padrões existentes
 3. Gere um nome descritivo e curto para o arquivo
 4. Inclua snippets de código quando fizer sentido

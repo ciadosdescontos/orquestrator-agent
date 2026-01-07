@@ -1,11 +1,6 @@
-[metadata]
-name = "question"
-description = "Answer questions about the project structure and documentation without coding"
-model = "gemini-3-flash-preview"
-allowed_tools = ["Bash", "Read", "Glob", "Grep"]
+description = "Responde perguntas sobre a estrutura do projeto e documentação sem fazer alterações no código."
 
-[prompt]
-content = """
+prompt = """
 # Question
 
 Answer the user's question by analyzing the project structure and documentation. This prompt is designed to provide information and answer questions without making any code changes.
@@ -41,5 +36,5 @@ Answer the user's question by analyzing the project structure and documentation.
 
 ## Question
 
-{ARGUMENTS}
+{{args}}
 """

@@ -53,7 +53,7 @@ class GeminiAgent:
             "gemini-3-flash": "gemini-3-flash-preview"
         }
         cli_model = model_mapping.get(self.model, self.model)
-
+        
         # Monta o comando completo
         cmd_parts = [
             self.gemini_cli_path,
@@ -148,10 +148,10 @@ class GeminiAgent:
         parts = []
 
         if system_prompt:
-            parts.append(f"System: {system_prompt}\n")
+            parts.append(f"Sistema: {system_prompt}\n")
 
         for msg in messages:
-            role = "User" if msg["role"] == "user" else "Assistant"
+            role = "Usuário" if msg["role"] == "user" else "Assistente"
             parts.append(f"{role}: {msg['content']}\n")
 
         return "\n".join(parts)
