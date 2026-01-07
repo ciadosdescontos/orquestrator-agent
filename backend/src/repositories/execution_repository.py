@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete, func
+from sqlalchemy import select, update, delete
 from typing import Optional, List
 import uuid
 from datetime import datetime
@@ -207,47 +207,3 @@ class ExecutionRepository:
             })
 
         return history
-
-    async def update_token_usage(
-        self,
-        execution_id: str,
-        input_tokens: int,
-        output_tokens: int,
-        total_tokens: int,
-        model_used: Optional[str] = None
-    ):
-        """Atualiza informações de token usage para uma execução"""
-        values = {
-            "input_tokens": input_tokens,
-            "output_tokens": output_tokens,
-            "total_tokens": total_tokens
-        }
-
-        if model_used:
-            values["model_used"] = model_used
-
-        await self.db.execute(
-            update(Execution)
-            .where(Execution.id == execution_id)
-            .values(**values)
-        )
-        await self.db.commit()
-
-    async def get_token_stats_for_card(self, card_id: str) -> dict:
-        """Retorna estatísticas agregadas de tokens para um card."""
-        result = await self.db.execute(
-            select(
-                func.sum(Execution.input_tokens).label('total_input'),
-                func.sum(Execution.output_tokens).label('total_output'),
-                func.sum(Execution.total_tokens).label('total_tokens'),
-                func.count(Execution.id).label('execution_count')
-            ).where(Execution.card_id == card_id)
-        )
-        row = result.first()
-
-        return {
-            "totalInputTokens": row.total_input or 0,
-            "totalOutputTokens": row.total_output or 0,
-            "totalTokens": row.total_tokens or 0,
-            "executionCount": row.execution_count or 0
-        }

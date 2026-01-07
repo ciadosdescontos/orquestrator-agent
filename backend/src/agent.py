@@ -1356,20 +1356,6 @@ async def execute_plan(
                             # Tentar extrair spec_path do resultado
                             if not spec_path:
                                 spec_path = extract_spec_path(message.result)
-
-                        # Capturar token usage se disponível
-                        if hasattr(message, "usage") and message.usage:
-                            usage = message.usage
-                            add_log(record, LogType.INFO, f"Token usage - Input: {usage.input_tokens}, Output: {usage.output_tokens}, Total: {usage.total_tokens}")
-                            # Salvar token usage no banco se disponível
-                            if repo and execution_db:
-                                await repo.update_token_usage(
-                                    execution_id=execution_db.id,
-                                    input_tokens=usage.input_tokens,
-                                    output_tokens=usage.output_tokens,
-                                    total_tokens=usage.total_tokens,
-                                    model_used=model
-                                )
             except asyncio.CancelledError:
                 add_log(record, LogType.ERROR, "Execution cancelled by client")
                 raise
