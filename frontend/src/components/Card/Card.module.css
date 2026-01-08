@@ -577,3 +577,31 @@
   font-weight: 500;
   color: var(--zen-error);
 }
+
+/* Token Stats Display */
+.tokenStats {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  margin-top: var(--space-2);
+  background: var(--zen-gray-50);
+  border: 1px solid var(--zen-gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.tokenIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: var(--zen-primary-subtle);
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--zen-primary);
+}

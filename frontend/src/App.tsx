@@ -179,6 +179,43 @@ function App() {
     loadInitialData();
   }, []);
 
+  // Polling para atualizar token stats em tempo real (a cada 2 segundos)
+  const hasActiveExecutions = cards.some(c => c.activeExecution?.status === 'running');
+
+  useEffect(() => {
+    if (!hasActiveExecutions) {
+      return; // Não faz polling se não há execuções ativas
+    }
+
+    console.log('[App] Starting token stats polling (active executions detected)');
+
+    const interval = setInterval(async () => {
+      try {
+        const updatedCards = await cardsApi.fetchCards();
+
+        // Atualizar apenas os token stats dos cards
+        setCards(prev => prev.map(card => {
+          const updated = updatedCards.find(c => c.id === card.id);
+          if (updated) {
+            return {
+              ...card,
+              tokenStats: updated.tokenStats,
+              activeExecution: updated.activeExecution,
+            };
+          }
+          return card;
+        }));
+      } catch (error) {
+        console.error('[App] Error polling token stats:', error);
+      }
+    }, 2000); // 2 segundos
+
+    return () => {
+      console.log('[App] Stopping token stats polling');
+      clearInterval(interval);
+    };
+  }, [hasActiveExecutions]);
+
   // Polling para monitorar merge automático em background
   useEffect(() => {
     const cardsBeingMerged = cards.filter(c => c.mergeStatus === 'resolving');

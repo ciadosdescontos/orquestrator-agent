@@ -37,6 +37,13 @@ export interface DiffStats {
   branchName?: string;
 }
 
+export interface TokenStats {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  executionCount: number;
+}
+
 export interface ActiveExecution {
   id: string;
   status: 'idle' | 'running' | 'success' | 'error';
@@ -67,6 +74,8 @@ export interface Card {
   worktreePath?: string;
   // Campos para diff visualization
   diffStats?: DiffStats;
+  // Campos para token tracking
+  tokenStats?: TokenStats;
 }
 
 export interface Column {

@@ -26,6 +26,14 @@ ModelType = Literal[
 MergeStatus = Literal["none", "merging", "resolving", "merged", "failed"]
 
 
+class TokenStats(BaseModel):
+    """Schema for token usage statistics."""
+    inputTokens: int = 0
+    outputTokens: int = 0
+    totalTokens: int = 0
+    executionCount: int = 0
+
+
 class ActiveExecution(BaseModel):
     """Schema for active execution info."""
     id: str
@@ -129,6 +137,8 @@ class CardResponse(BaseModel):
     base_branch: Optional[str] = Field(None, alias="baseBranch")
     # Campos para diff visualization
     diff_stats: Optional[DiffStats] = Field(None, alias="diffStats")
+    # Token stats
+    token_stats: Optional[TokenStats] = Field(None, alias="tokenStats")
 
     @property
     def is_finalized(self) -> bool:
