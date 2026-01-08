@@ -1,0 +1,317 @@
+/* ============================================
+   MetricCard - Premium Dashboard Metric Card
+   Design: Corporate Refined with Glassmorphism
+   ============================================ */
+
+.metricCard {
+  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 24px;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  isolation: isolate;
+
+  /* Premium shadow stack */
+  box-shadow:
+    0 2px 8px -2px rgba(0, 0, 0, 0.1),
+    0 8px 16px -4px rgba(0, 0, 0, 0.08),
+    0 16px 32px -8px rgba(0, 0, 0, 0.05);
+}
+
+.metricCard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(255, 255, 255, 0.06),
+    transparent 40%
+  );
+  opacity: 0;
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.metricCard:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-color);
+  box-shadow:
+    0 4px 12px -2px rgba(0, 0, 0, 0.12),
+    0 12px 24px -4px rgba(0, 0, 0, 0.1),
+    0 24px 48px -8px rgba(0, 0, 0, 0.08),
+    0 0 0 1px var(--accent-color);
+}
+
+.metricCard:hover::before {
+  opacity: 1;
+}
+
+/* Animated glow effect */
+.cardGlow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--accent-color),
+    transparent
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 2;
+}
+
+.metricCard:hover .cardGlow {
+  opacity: 0.6;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(100%);
+  }
+}
+
+/* Card border - subtle inner glow */
+.cardBorder {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1),
+    transparent,
+    rgba(255, 255, 255, 0.05)
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.5;
+  transition: opacity 0.3s ease;
+  z-index: 2;
+}
+
+.metricCard:hover .cardBorder {
+  opacity: 1;
+}
+
+/* Color variants */
+.color-cyan {
+  --accent-color: #06b6d4;
+  --accent-glow: rgba(6, 182, 212, 0.2);
+}
+
+.color-purple {
+  --accent-color: #a855f7;
+  --accent-glow: rgba(168, 85, 247, 0.2);
+}
+
+.color-green {
+  --accent-color: #10b981;
+  --accent-glow: rgba(16, 185, 129, 0.2);
+}
+
+.color-amber {
+  --accent-color: #f59e0b;
+  --accent-glow: rgba(245, 158, 11, 0.2);
+}
+
+.color-blue {
+  --accent-color: #3b82f6;
+  --accent-glow: rgba(59, 130, 246, 0.2);
+}
+
+.color-red {
+  --accent-color: #ef4444;
+  --accent-glow: rgba(239, 68, 68, 0.2);
+}
+
+/* Header section */
+.header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 3;
+}
+
+.iconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    var(--accent-color) 0%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+  color: white;
+  font-size: 24px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px var(--accent-glow);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.metricCard:hover .iconWrapper {
+  transform: scale(1.05) rotate(-3deg);
+  box-shadow: 0 6px 20px var(--accent-glow);
+}
+
+.titleSection {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.subtitle {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 4px 0 0;
+  line-height: 1.3;
+}
+
+/* Body section */
+.body {
+  position: relative;
+  z-index: 3;
+}
+
+.valueSection {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.value {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.3s ease;
+}
+
+.metricCard:hover .value {
+  color: rgba(255, 255, 255, 1);
+}
+
+/* Trend indicator */
+.trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+}
+
+.trendIcon {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.trendValue {
+  font-variant-numeric: tabular-nums;
+}
+
+.trendPeriod {
+  margin-left: 2px;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
+}
+
+.trendUp {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.trendDown {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.trendNeutral {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Sparkline */
+.sparklineContainer {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sparkline {
+  width: 100%;
+  height: 32px;
+  color: var(--accent-color);
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+}
+
+.metricCard:hover .sparkline {
+  opacity: 1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .metricCard {
+    padding: 20px;
+  }
+
+  .value {
+    font-size: 32px;
+  }
+
+  .iconWrapper {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+}
+
+/* Dark theme optimization */
+@media (prefers-color-scheme: dark) {
+  .metricCard {
+    background: rgba(255, 255, 255, 0.04);
+  }
+}
