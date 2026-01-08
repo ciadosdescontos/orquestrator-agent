@@ -1,0 +1,287 @@
+/* ============================================
+   ActivityFeed - Timeline of Recent Activities
+   Design: Corporate Refined with Timeline
+   ============================================ */
+
+.activityFeed {
+  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 24px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  box-shadow:
+    0 2px 8px -2px rgba(0, 0, 0, 0.1),
+    0 8px 16px -4px rgba(0, 0, 0, 0.08);
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.title {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Timeline */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.activityItem {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  padding: 14px 0;
+  opacity: 0;
+  animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  transition: all 0.2s ease;
+}
+
+.activityItem:hover {
+  transform: translateX(4px);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Icon container */
+.iconContainer {
+  position: relative;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--icon-bg);
+  border: 1px solid var(--icon-border);
+  color: var(--icon-color);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 2;
+}
+
+.activityItem:hover .iconContainer {
+  transform: scale(1.1) rotate(-5deg);
+  box-shadow: 0 4px 12px var(--icon-glow);
+}
+
+/* Color variants for icons */
+.color-blue {
+  --icon-bg: rgba(59, 130, 246, 0.15);
+  --icon-border: rgba(59, 130, 246, 0.3);
+  --icon-color: #3b82f6;
+  --icon-glow: rgba(59, 130, 246, 0.3);
+}
+
+.color-amber {
+  --icon-bg: rgba(245, 158, 11, 0.15);
+  --icon-border: rgba(245, 158, 11, 0.3);
+  --icon-color: #f59e0b;
+  --icon-glow: rgba(245, 158, 11, 0.3);
+}
+
+.color-green {
+  --icon-bg: rgba(16, 185, 129, 0.15);
+  --icon-border: rgba(16, 185, 129, 0.3);
+  --icon-color: #10b981;
+  --icon-glow: rgba(16, 185, 129, 0.3);
+}
+
+.color-purple {
+  --icon-bg: rgba(168, 85, 247, 0.15);
+  --icon-border: rgba(168, 85, 247, 0.3);
+  --icon-color: #a855f7;
+  --icon-glow: rgba(168, 85, 247, 0.3);
+}
+
+.color-cyan {
+  --icon-bg: rgba(6, 182, 212, 0.15);
+  --icon-border: rgba(6, 182, 212, 0.3);
+  --icon-color: #06b6d4;
+  --icon-glow: rgba(6, 182, 212, 0.3);
+}
+
+/* Timeline connector */
+.connector {
+  position: absolute;
+  left: 17.5px;
+  top: 50px;
+  bottom: -14px;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  z-index: 1;
+}
+
+/* Content */
+.content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.activityText {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.cardName {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  transition: color 0.2s ease;
+}
+
+.activityItem:hover .cardName {
+  color: #06b6d4;
+}
+
+.actionText {
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.timestamp {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.4);
+  font-variant-numeric: tabular-nums;
+}
+
+/* View all button */
+.viewAllButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.viewAllButton:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(6, 182, 212, 0.4);
+  color: #06b6d4;
+  transform: translateY(-1px);
+}
+
+.viewAllButton svg {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.viewAllButton:hover svg {
+  transform: translateX(2px);
+}
+
+/* Empty state */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.emptyIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.3);
+  margin-bottom: 16px;
+}
+
+.emptyText {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .activityFeed {
+    padding: 20px;
+  }
+
+  .activityText {
+    font-size: 13px;
+  }
+
+  .iconContainer {
+    width: 32px;
+    height: 32px;
+  }
+
+  .connector {
+    left: 15.5px;
+  }
+}
