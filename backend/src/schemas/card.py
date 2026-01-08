@@ -18,23 +18,20 @@ class DiffStats(BaseModel):
     branch_name: Optional[str] = None
 
 
-class TokenStats(BaseModel):
-    """Schema for token usage statistics."""
-    totalInputTokens: int = Field(0, alias="totalInputTokens")
-    totalOutputTokens: int = Field(0, alias="totalOutputTokens")
-    totalTokens: int = Field(0, alias="totalTokens")
-    executionCount: int = Field(0, alias="executionCount")
-
-    class Config:
-        populate_by_name = True
-
-
 ColumnId = Literal["backlog", "plan", "implement", "test", "review", "done", "archived", "cancelado"]
 ModelType = Literal[
     "opus-4.5", "sonnet-4.5", "haiku-4.5",  # Claude models
     "gemini-3-pro", "gemini-3-flash"  # Gemini models
 ]
 MergeStatus = Literal["none", "merging", "resolving", "merged", "failed"]
+
+
+class TokenStats(BaseModel):
+    """Schema for token usage statistics."""
+    inputTokens: int = 0
+    outputTokens: int = 0
+    totalTokens: int = 0
+    executionCount: int = 0
 
 
 class ActiveExecution(BaseModel):
@@ -140,7 +137,7 @@ class CardResponse(BaseModel):
     base_branch: Optional[str] = Field(None, alias="baseBranch")
     # Campos para diff visualization
     diff_stats: Optional[DiffStats] = Field(None, alias="diffStats")
-    # Campos para token statistics
+    # Token stats
     token_stats: Optional[TokenStats] = Field(None, alias="tokenStats")
 
     @property

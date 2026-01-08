@@ -1,4 +1,15 @@
-"""Database manager for multi-project database isolation."""
+"""Database manager for multi-project database isolation.
+
+Arquitetura de Databases:
+    - backend/auth.db: Database principal/raiz do sistema
+      Contém: users, cards, executions, execution_logs, active_project
+
+    - .claude/database.db: Databases isolados por projeto
+      Cada projeto tem seu próprio database em sua pasta .claude
+
+    - backend/.project_data/: Diretório legacy (mantido para compatibilidade)
+      Databases antigos são migrados automaticamente para .claude
+"""
 
 import hashlib
 import os
@@ -15,17 +26,28 @@ logger = logging.getLogger(__name__)
 
 
 class DatabaseManager:
-    """Manages multiple isolated databases, one per project."""
+    """Manages multiple isolated databases, one per project.
+
+    O DatabaseManager trabalha com dois tipos de databases:
+    1. Database Principal (backend/auth.db): Database raiz do sistema
+    2. Databases de Projeto (.claude/database.db): Databases isolados por projeto
+    """
 
     def __init__(self, base_data_dir: str = ".project_data"):
         """
         Initialize the database manager.
 
         Args:
-            base_data_dir: Base directory for storing project databases
+            base_data_dir: Base directory for storing legacy project databases
+                          (novos databases são criados em .claude/)
         """
+        # Database principal - sempre backend/auth.db
+        self.main_database_path = Path("backend/auth.db")
+
+        # Diretório para databases legados (compatibilidade)
         self.base_data_dir = Path(base_data_dir)
         self.base_data_dir.mkdir(exist_ok=True)
+
         self.engines: Dict[str, AsyncEngine] = {}
         self.sessions: Dict[str, Any] = {}
         self.current_project_id: Optional[str] = None

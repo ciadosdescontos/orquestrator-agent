@@ -205,16 +205,6 @@ export function Card({ card, onRemove, onUpdateCard, isDragging = false, executi
               ))}
             </div>
           )}
-          {card.tokenStats && card.tokenStats.totalTokens > 0 && (
-            <div className={styles.tokenStats}>
-              <div className={styles.tokenBadge}>
-                <span className={styles.tokenIcon}>🪙</span>
-                <span className={styles.tokenCount}>
-                  {card.tokenStats.totalTokens.toLocaleString()} tokens
-                </span>
-              </div>
-            </div>
-          )}
           {executionStatus && executionStatus.status !== 'idle' && (
             <div className={styles.executionStatus}>
               {(() => {
@@ -272,6 +262,12 @@ export function Card({ card, onRemove, onUpdateCard, isDragging = false, executi
                   </>
                 );
               })()}
+            </div>
+          )}
+          {card.tokenStats && card.tokenStats.totalTokens > 0 && (
+            <div className={styles.tokenStats}>
+              <span className={styles.tokenIcon}>T</span>
+              <span>{card.tokenStats.totalTokens.toLocaleString()} tokens</span>
             </div>
           )}
         </div>

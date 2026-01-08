@@ -19,8 +19,9 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
 
-    # Database
-    database_url: str = "sqlite+aiosqlite:///./auth.db"
+    # Database - Principal database centralizado no backend
+    # Usa caminho absoluto para evitar problemas de diretório de trabalho
+    database_url: str = "sqlite+aiosqlite:///auth.db"
 
     # Multi-Database Configuration
     project_data_dir: str = ".project_data"

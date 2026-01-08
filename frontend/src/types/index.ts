@@ -38,16 +38,10 @@ export interface DiffStats {
 }
 
 export interface TokenStats {
-  totalInputTokens: number;
-  totalOutputTokens: number;
+  inputTokens: number;
+  outputTokens: number;
   totalTokens: number;
   executionCount: number;
-  breakdown?: {
-    plan?: number;
-    implement?: number;
-    test?: number;
-    review?: number;
-  };
 }
 
 export interface ActiveExecution {
@@ -80,7 +74,7 @@ export interface Card {
   worktreePath?: string;
   // Campos para diff visualization
   diffStats?: DiffStats;
-  // Campos para token statistics
+  // Campos para token tracking
   tokenStats?: TokenStats;
 }
 

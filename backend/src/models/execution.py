@@ -33,7 +33,7 @@ class Execution(Base):
     input_tokens = Column(Integer, nullable=True)
     output_tokens = Column(Integer, nullable=True)
     total_tokens = Column(Integer, nullable=True)
-    model_used = Column(String, nullable=True)  # Para rastrear qual modelo foi usado
+    model_used = Column(String, nullable=True)
 
     # Relacionamentos
     card = relationship("Card", back_populates="executions")

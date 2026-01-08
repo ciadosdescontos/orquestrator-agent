@@ -28,9 +28,55 @@ from .execution import (
 from .repositories.execution_repository import ExecutionRepository
 from .models.execution import ExecutionStatus as DBExecutionStatus
 from .git_workspace import GitWorkspaceManager
+from .services.execution_ws import execution_ws_manager
 
 # Store executions in memory (mantido para compatibilidade durante migração)
 executions: dict[str, ExecutionRecord] = {}
+
+
+def _is_retryable(error: str) -> bool:
+    """Verifica se erro e transiente e pode ser retentado"""
+    retryable = ["connection", "timeout", "rate limit", "overloaded", "503", "502", "529"]
+    return any(r in error.lower() for r in retryable)
+
+
+async def execute_with_retry(
+    execute_fn,
+    card_id: str,
+    max_retries: int = 3,
+    retry_delay: float = 2.0
+) -> PlanResult:
+    """Executa funcao com retry automatico em erros transientes"""
+    last_error = None
+
+    for attempt in range(max_retries):
+        try:
+            result = await execute_fn()
+
+            if result.success:
+                return result
+
+            # So retry em erros de conexao/timeout
+            if result.error and not _is_retryable(result.error):
+                return result
+
+            last_error = result.error
+
+        except Exception as e:
+            last_error = str(e)
+            if not _is_retryable(str(e)):
+                raise
+
+        if attempt < max_retries - 1:
+            delay = retry_delay * (2 ** attempt)
+            print(f"[{card_id[:8]}] Retry {attempt + 1}/{max_retries} em {delay:.1f}s...")
+            await asyncio.sleep(delay)
+
+    return PlanResult(
+        success=False,
+        error=f"Falhou apos {max_retries} tentativas: {last_error}",
+        logs=[]
+    )
 
 # =============================================================================
 # Prompts do Gemini CLI (embutidos para funcionar em worktrees)
@@ -1357,17 +1403,31 @@ async def execute_plan(
                             if not spec_path:
                                 spec_path = extract_spec_path(message.result)
 
-                        # Capturar token usage se disponível
-                        if hasattr(message, "usage") and message.usage:
+                        # DEBUG: Log ResultMessage attributes
+                        print(f"[DEBUG] ResultMessage received. Has usage: {hasattr(message, 'usage')}, usage value: {getattr(message, 'usage', 'N/A')}")
+
+                        # Capturar token usage (usage é um dict, não objeto)
+                        if hasattr(message, 'usage') and message.usage:
                             usage = message.usage
-                            add_log(record, LogType.INFO, f"Token usage - Input: {usage.input_tokens}, Output: {usage.output_tokens}, Total: {usage.total_tokens}")
-                            # Salvar token usage no banco se disponível
+                            input_tokens = usage.get('input_tokens', 0) if isinstance(usage, dict) else 0
+                            output_tokens = usage.get('output_tokens', 0) if isinstance(usage, dict) else 0
+                            token_stats = {
+                                "input_tokens": input_tokens,
+                                "output_tokens": output_tokens,
+                                "total_tokens": input_tokens + output_tokens,
+                            }
+
+                            add_log(record, LogType.INFO,
+                                f"Token usage - Input: {token_stats['input_tokens']}, "
+                                f"Output: {token_stats['output_tokens']}, "
+                                f"Total: {token_stats['total_tokens']}")
+
                             if repo and execution_db:
                                 await repo.update_token_usage(
                                     execution_id=execution_db.id,
-                                    input_tokens=usage.input_tokens,
-                                    output_tokens=usage.output_tokens,
-                                    total_tokens=usage.total_tokens,
+                                    input_tokens=token_stats["input_tokens"],
+                                    output_tokens=token_stats["output_tokens"],
+                                    total_tokens=token_stats["total_tokens"],
                                     model_used=model
                                 )
             except asyncio.CancelledError:
@@ -1389,6 +1449,17 @@ async def execute_plan(
                 status=DBExecutionStatus.SUCCESS,
                 result=result_text
             )
+            # Busca token stats para notificacao
+            token_stats = await repo.get_token_stats_for_card(card_id)
+
+            # Notificar via WebSocket
+            await execution_ws_manager.notify_complete(
+                card_id=card_id,
+                status="success",
+                command="/plan",
+                token_stats=token_stats if token_stats.get("totalTokens", 0) > 0 else None
+            )
+
             # Busca execução completa para retornar logs
             execution_data = await repo.get_execution_with_logs(card_id)
             if execution_data:
@@ -1425,6 +1496,15 @@ async def execute_plan(
                 status=DBExecutionStatus.ERROR,
                 result=error_message
             )
+
+            # Notificar via WebSocket
+            await execution_ws_manager.notify_complete(
+                card_id=card_id,
+                status="error",
+                command="/plan",
+                error=error_message
+            )
+
             # Busca execução para retornar logs
             execution_data = await repo.get_execution_with_logs(card_id)
             if execution_data:
@@ -1588,6 +1668,31 @@ async def execute_implement(
                     result_text = message.result
                     add_log(record, LogType.RESULT, message.result)
 
+                # Capturar token usage (usage é um dict, não objeto)
+                if hasattr(message, 'usage') and message.usage:
+                    usage = message.usage
+                    input_tokens = usage.get('input_tokens', 0) if isinstance(usage, dict) else 0
+                    output_tokens = usage.get('output_tokens', 0) if isinstance(usage, dict) else 0
+                    token_stats = {
+                        "input_tokens": input_tokens,
+                        "output_tokens": output_tokens,
+                        "total_tokens": input_tokens + output_tokens,
+                    }
+
+                    add_log(record, LogType.INFO,
+                        f"Token usage - Input: {token_stats['input_tokens']}, "
+                        f"Output: {token_stats['output_tokens']}, "
+                        f"Total: {token_stats['total_tokens']}")
+
+                    if repo and execution_db:
+                        await repo.update_token_usage(
+                            execution_id=execution_db.id,
+                            input_tokens=token_stats["input_tokens"],
+                            output_tokens=token_stats["output_tokens"],
+                            total_tokens=token_stats["total_tokens"],
+                            model_used=model
+                        )
+
         # Mark as success
         record.completed_at = datetime.now().isoformat()
         record.status = ExecutionStatus.SUCCESS
@@ -1601,6 +1706,17 @@ async def execute_implement(
                 status=DBExecutionStatus.SUCCESS,
                 result=result_text
             )
+            # Busca token stats para notificacao
+            token_stats = await repo.get_token_stats_for_card(card_id)
+
+            # Notificar via WebSocket
+            await execution_ws_manager.notify_complete(
+                card_id=card_id,
+                status="success",
+                command="/implement",
+                token_stats=token_stats if token_stats.get("totalTokens", 0) > 0 else None
+            )
+
             # Busca execução completa para retornar logs
             execution_data = await repo.get_execution_with_logs(card_id)
             if execution_data:
@@ -1635,6 +1751,15 @@ async def execute_implement(
                 status=DBExecutionStatus.ERROR,
                 result=error_message
             )
+
+            # Notificar via WebSocket
+            await execution_ws_manager.notify_complete(
+                card_id=card_id,
+                status="error",
+                command="/implement",
+                error=error_message
+            )
+
             # Busca execução para retornar logs
             execution_data = await repo.get_execution_with_logs(card_id)
             if execution_data:
@@ -1857,6 +1982,31 @@ async def execute_test_implementation(
                     result_text = message.result
                     add_log(record, LogType.RESULT, message.result)
 
+                # Capturar token usage (usage é um dict, não objeto)
+                if hasattr(message, 'usage') and message.usage:
+                    usage = message.usage
+                    input_tokens = usage.get('input_tokens', 0) if isinstance(usage, dict) else 0
+                    output_tokens = usage.get('output_tokens', 0) if isinstance(usage, dict) else 0
+                    token_stats = {
+                        "input_tokens": input_tokens,
+                        "output_tokens": output_tokens,
+                        "total_tokens": input_tokens + output_tokens,
+                    }
+
+                    add_log(record, LogType.INFO,
+                        f"Token usage - Input: {token_stats['input_tokens']}, "
+                        f"Output: {token_stats['output_tokens']}, "
+                        f"Total: {token_stats['total_tokens']}")
+
+                    if repo and execution_db:
+                        await repo.update_token_usage(
+                            execution_id=execution_db.id,
+                            input_tokens=token_stats["input_tokens"],
+                            output_tokens=token_stats["output_tokens"],
+                            total_tokens=token_stats["total_tokens"],
+                            model_used=model
+                        )
+
         # Check if tests failed based on logs
         test_failed = False
         for log in record.logs:
@@ -1888,6 +2038,14 @@ async def execute_test_implementation(
                     execution_id=execution_db.id,
                     status=DBExecutionStatus.ERROR,
                     result="Tests failed"
+                )
+
+                # Notificar via WebSocket
+                await execution_ws_manager.notify_complete(
+                    card_id=card_id,
+                    status="error",
+                    command="/test-implementation",
+                    error="Tests failed"
                 )
 
             # Analyze test failure and create fix card
@@ -1924,6 +2082,17 @@ async def execute_test_implementation(
                     status=DBExecutionStatus.SUCCESS,
                     result=result_text
                 )
+                # Busca token stats para notificacao
+                token_stats = await repo.get_token_stats_for_card(card_id)
+
+                # Notificar via WebSocket
+                await execution_ws_manager.notify_complete(
+                    card_id=card_id,
+                    status="success",
+                    command="/test-implementation",
+                    token_stats=token_stats if token_stats.get("totalTokens", 0) > 0 else None
+                )
+
                 # Busca execução completa para retornar logs
                 execution_data = await repo.get_execution_with_logs(card_id)
                 if execution_data:
@@ -1957,6 +2126,14 @@ async def execute_test_implementation(
                 execution_id=execution_db.id,
                 status=DBExecutionStatus.ERROR,
                 result=error_message
+            )
+
+            # Notificar via WebSocket
+            await execution_ws_manager.notify_complete(
+                card_id=card_id,
+                status="error",
+                command="/test-implementation",
+                error=error_message
             )
 
         # Create fix card for execution errors as well
@@ -2135,6 +2312,31 @@ async def execute_review(
                     result_text = message.result
                     add_log(record, LogType.RESULT, message.result)
 
+                # Capturar token usage (usage é um dict, não objeto)
+                if hasattr(message, 'usage') and message.usage:
+                    usage = message.usage
+                    input_tokens = usage.get('input_tokens', 0) if isinstance(usage, dict) else 0
+                    output_tokens = usage.get('output_tokens', 0) if isinstance(usage, dict) else 0
+                    token_stats = {
+                        "input_tokens": input_tokens,
+                        "output_tokens": output_tokens,
+                        "total_tokens": input_tokens + output_tokens,
+                    }
+
+                    add_log(record, LogType.INFO,
+                        f"Token usage - Input: {token_stats['input_tokens']}, "
+                        f"Output: {token_stats['output_tokens']}, "
+                        f"Total: {token_stats['total_tokens']}")
+
+                    if repo and execution_db:
+                        await repo.update_token_usage(
+                            execution_id=execution_db.id,
+                            input_tokens=token_stats["input_tokens"],
+                            output_tokens=token_stats["output_tokens"],
+                            total_tokens=token_stats["total_tokens"],
+                            model_used=model
+                        )
+
         # Mark as success
         record.completed_at = datetime.now().isoformat()
         record.status = ExecutionStatus.SUCCESS
@@ -2148,6 +2350,17 @@ async def execute_review(
                 status=DBExecutionStatus.SUCCESS,
                 result=result_text
             )
+            # Busca token stats para notificacao
+            token_stats = await repo.get_token_stats_for_card(card_id)
+
+            # Notificar via WebSocket
+            await execution_ws_manager.notify_complete(
+                card_id=card_id,
+                status="success",
+                command="/review",
+                token_stats=token_stats if token_stats.get("totalTokens", 0) > 0 else None
+            )
+
             # Busca execução completa para retornar logs
             execution_data = await repo.get_execution_with_logs(card_id)
             if execution_data:
@@ -2182,6 +2395,15 @@ async def execute_review(
                 status=DBExecutionStatus.ERROR,
                 result=error_message
             )
+
+            # Notificar via WebSocket
+            await execution_ws_manager.notify_complete(
+                card_id=card_id,
+                status="error",
+                command="/review",
+                error=error_message
+            )
+
             # Busca execução para retornar logs
             execution_data = await repo.get_execution_with_logs(card_id)
             if execution_data:

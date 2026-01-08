@@ -214,15 +214,14 @@ class ExecutionRepository:
         input_tokens: int,
         output_tokens: int,
         total_tokens: int,
-        model_used: Optional[str] = None
+        model_used: str = None
     ):
-        """Atualiza informações de token usage para uma execução"""
+        """Atualiza token usage de uma execucao"""
         values = {
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
-            "total_tokens": total_tokens
+            "total_tokens": total_tokens,
         }
-
         if model_used:
             values["model_used"] = model_used
 
@@ -234,7 +233,7 @@ class ExecutionRepository:
         await self.db.commit()
 
     async def get_token_stats_for_card(self, card_id: str) -> dict:
-        """Retorna estatísticas agregadas de tokens para um card."""
+        """Retorna estatisticas agregadas de tokens para um card"""
         result = await self.db.execute(
             select(
                 func.sum(Execution.input_tokens).label('total_input'),
@@ -246,8 +245,8 @@ class ExecutionRepository:
         row = result.first()
 
         return {
-            "totalInputTokens": row.total_input or 0,
-            "totalOutputTokens": row.total_output or 0,
+            "inputTokens": row.total_input or 0,
+            "outputTokens": row.total_output or 0,
             "totalTokens": row.total_tokens or 0,
             "executionCount": row.execution_count or 0
         }
