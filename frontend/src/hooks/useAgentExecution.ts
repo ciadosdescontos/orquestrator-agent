@@ -20,7 +20,15 @@ interface ExecuteImplementResult {
 // Callback type for execution completion
 type ExecutionCompletionCallback = (execution: ExecutionStatus) => void;
 
-export function useAgentExecution(initialExecutions?: Map<string, ExecutionStatus>) {
+interface UseAgentExecutionProps {
+  initialExecutions?: Map<string, ExecutionStatus>;
+  onExecutionComplete?: (cardId: string, status: ExecutionStatus) => void;
+}
+
+export function useAgentExecution(props?: UseAgentExecutionProps | Map<string, ExecutionStatus>) {
+  // Support both old API (just Map) and new API (props object)
+  const initialExecutions = props instanceof Map ? props : props?.initialExecutions;
+  const onExecutionComplete = props instanceof Map ? undefined : props?.onExecutionComplete;
   const [executions, setExecutions] = useState<Map<string, ExecutionStatus>>(new Map());
   const pollingIntervalsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   // Callbacks to be called when an execution completes (for workflow recovery)
@@ -131,9 +139,15 @@ export function useAgentExecution(initialExecutions?: Map<string, ExecutionStatu
           if (execution.status !== 'running') {
             stopPolling(cardId);
 
+            // Call global onExecutionComplete callback if provided
+            const completedExecution = next.get(cardId);
+            if (onExecutionComplete && completedExecution) {
+              console.log(`[useAgentExecution] Calling global onExecutionComplete for card: ${cardId}`);
+              setTimeout(() => onExecutionComplete(cardId, completedExecution), 0);
+            }
+
             // Call completion callback if registered
             const callback = completionCallbacksRef.current.get(cardId);
-            const completedExecution = next.get(cardId);
             if (callback && completedExecution) {
               console.log(`[useAgentExecution] Calling completion callback for card: ${cardId}`);
               setTimeout(() => callback(completedExecution), 0);
@@ -175,9 +189,15 @@ export function useAgentExecution(initialExecutions?: Map<string, ExecutionStatu
           if (execution.status !== 'running') {
             stopPolling(cardId);
 
+            // Call global onExecutionComplete callback if provided
+            const completedExecution = next.get(cardId);
+            if (onExecutionComplete && completedExecution) {
+              console.log(`[useAgentExecution] Calling global onExecutionComplete for card: ${cardId}`);
+              setTimeout(() => onExecutionComplete(cardId, completedExecution), 0);
+            }
+
             // Call completion callback if registered (for workflow recovery)
             const callback = completionCallbacksRef.current.get(cardId);
-            const completedExecution = next.get(cardId);
             if (callback && completedExecution) {
               console.log(`[useAgentExecution] Calling completion callback for card: ${cardId}`);
               // Use setTimeout to ensure state is updated before callback

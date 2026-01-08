@@ -83,6 +83,21 @@ export async function fetchCards(): Promise<Card[]> {
 }
 
 /**
+ * Fetch a single card by ID.
+ */
+export async function fetchCard(cardId: string): Promise<Card> {
+  const url = `${API_ENDPOINTS.cards}/${cardId}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch card: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return mapCardResponseToCard(data.card);
+}
+
+/**
  * Create a new card (always in backlog).
  */
 export async function createCard(

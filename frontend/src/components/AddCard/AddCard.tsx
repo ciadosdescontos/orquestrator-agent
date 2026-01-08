@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ColumnId, ModelType } from '../../types';
+import { ColumnId, ModelType, Card } from '../../types';
 import { uploadImage } from '../../utils/imageHandler';
 import { AddCardModal } from '../AddCardModal/AddCardModal';
 import * as cardsApi from '../../api/cards';
@@ -8,9 +8,10 @@ import styles from './AddCard.module.css';
 interface AddCardProps {
   columnId: ColumnId;
   onAdd: (title: string, description: string, columnId: ColumnId) => void; // Mantido por compatibilidade
+  onCardCreated?: (newCard: Card) => void; // Nova prop para atualização reativa
 }
 
-export function AddCard({ }: AddCardProps) {
+export function AddCard({ onCardCreated }: AddCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleSubmit = async (cardData: {
@@ -52,8 +53,11 @@ export function AddCard({ }: AddCardProps) {
         newCard.images = uploadedImages;
       }
 
-      // Recarregar a página para atualizar a lista de cards
-      window.location.reload();
+      // Notificar parent component sobre novo card (atualização reativa)
+      onCardCreated?.(newCard);
+
+      // Fechar modal
+      setIsModalOpen(false);
     } catch (error) {
       console.error('Error creating card:', error);
       throw error;

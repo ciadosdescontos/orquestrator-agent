@@ -29,6 +29,7 @@ interface KanbanPageProps {
   currentProject: Project | null;
   onProjectSwitch: (project: Project | null) => void;
   onProjectLoad: (project: Project | null) => void;
+  onCardCreated?: (newCard: CardType) => void;
 }
 
 const KanbanPage = ({
@@ -52,6 +53,7 @@ const KanbanPage = ({
   currentProject,
   onProjectSwitch,
   onProjectLoad,
+  onCardCreated,
 }: KanbanPageProps) => {
   return (
     <div className={styles.kanbanPage}>
@@ -63,7 +65,7 @@ const KanbanPage = ({
           </p>
         </div>
         <div className={styles.projectActions}>
-          <AddCard columnId="backlog" onAdd={onAddCard} />
+          <AddCard columnId="backlog" onAdd={onAddCard} onCardCreated={onCardCreated} />
           <ProjectSwitcher
             currentProject={currentProject}
             onProjectSwitch={onProjectSwitch}

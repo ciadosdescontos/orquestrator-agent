@@ -4,6 +4,7 @@ import { Card as CardType, ColumnId, COLUMNS, isValidTransition, ExecutionStatus
 import { useAgentExecution } from './hooks/useAgentExecution';
 import { useWorkflowAutomation } from './hooks/useWorkflowAutomation';
 import { useChat } from './hooks/useChat';
+import { useViewPersistence } from './hooks/useViewPersistence';
 import * as cardsApi from './api/cards';
 import { getCurrentProject } from './api/projects';
 import WorkspaceLayout, { ModuleType } from './layouts/WorkspaceLayout';
@@ -14,7 +15,12 @@ import SettingsPage from './pages/SettingsPage';
 import styles from './App.module.css';
 
 function App() {
-  const [currentView, setCurrentView] = useState<ModuleType>('dashboard');
+  const { getSavedView, saveView } = useViewPersistence();
+
+  // Inicializar com view salva
+  const [currentView, setCurrentView] = useState<ModuleType>(() => {
+    return getSavedView();
+  });
   const [cards, setCards] = useState<CardType[]>([]);
   const [activeCard, setActiveCard] = useState<CardType | null>(null);
   const [activeTab, setActiveTab] = useState<'kanban' | 'chat'>('kanban');
@@ -25,7 +31,25 @@ function App() {
   const [initialWorkflowStatuses, setInitialWorkflowStatuses] = useState<Map<string, WorkflowStatus> | undefined>();
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const dragStartColumnRef = useRef<ColumnId | null>(null);
-  const { executePlan, executeImplement, executeTest, executeReview, getExecutionStatus, registerCompletionCallback, executions, fetchLogsHistory } = useAgentExecution(initialExecutions);
+
+  // Callback para atualizar cards quando uma execução completar
+  const handleExecutionComplete = async (cardId: string, status: ExecutionStatus) => {
+    if (status.status === 'success') {
+      try {
+        const updatedCard = await cardsApi.fetchCard(cardId);
+        setCards(prev => prev.map(card =>
+          card.id === cardId ? updatedCard : card
+        ));
+      } catch (error) {
+        console.error('[App] Failed to fetch updated card:', error);
+      }
+    }
+  };
+
+  const { executePlan, executeImplement, executeTest, executeReview, getExecutionStatus, registerCompletionCallback, executions, fetchLogsHistory } = useAgentExecution({
+    initialExecutions,
+    onExecutionComplete: handleExecutionComplete,
+  });
   const { state: chatState, sendMessage, handleModelChange, createNewSession } = useChat();
 
   // Define moveCard and updateCardSpecPath BEFORE useWorkflowAutomation
@@ -189,49 +213,71 @@ function App() {
 
     console.log('[App] Starting token stats polling (active executions detected)');
 
-    const interval = setInterval(async () => {
+    const pollTokenStats = async () => {
       try {
         const updatedCards = await cardsApi.fetchCards();
 
-        // Atualizar apenas os token stats dos cards
-        setCards(prev => prev.map(card => {
-          const updated = updatedCards.find(c => c.id === card.id);
-          if (updated) {
-            return {
+        setCards(prev => {
+          // Só atualizar se houver mudanças reais
+          const hasChanges = prev.some(card => {
+            const updated = updatedCards.find(c => c.id === card.id);
+            if (!updated) return false;
+
+            return (
+              JSON.stringify(card.tokenStats) !== JSON.stringify(updated.tokenStats) ||
+              JSON.stringify(card.activeExecution) !== JSON.stringify(updated.activeExecution) ||
+              JSON.stringify(card.diffStats) !== JSON.stringify(updated.diffStats)
+            );
+          });
+
+          if (!hasChanges) return prev;
+
+          return prev.map(card => {
+            const updated = updatedCards.find(c => c.id === card.id);
+            return updated ? {
               ...card,
               tokenStats: updated.tokenStats,
               activeExecution: updated.activeExecution,
-            };
-          }
-          return card;
-        }));
+              diffStats: updated.diffStats,
+            } : card;
+          });
+        });
       } catch (error) {
         console.error('[App] Error polling token stats:', error);
       }
-    }, 2000); // 2 segundos
+    };
 
+    // Primeira execução imediata
+    pollTokenStats();
+
+    const interval = setInterval(pollTokenStats, 2000);
     return () => {
       console.log('[App] Stopping token stats polling');
       clearInterval(interval);
     };
-  }, [hasActiveExecutions]);
+  }, [hasActiveExecutions]); // Dependência mais estável
 
   // Polling para monitorar merge automático em background
-  useEffect(() => {
-    const cardsBeingMerged = cards.filter(c => c.mergeStatus === 'resolving');
+  const mergingCardsRef = useRef<CardType[]>([]);
 
-    if (cardsBeingMerged.length === 0) {
+  useEffect(() => {
+    // Atualizar ref
+    mergingCardsRef.current = cards.filter(c =>
+      c.mergeStatus === 'resolving' || c.mergeStatus === 'merging'
+    );
+
+    if (mergingCardsRef.current.length === 0) {
       return; // Nada para monitorar
     }
 
-    console.log(`[App] Monitoring ${cardsBeingMerged.length} card(s) with merges in progress`);
+    console.log(`[App] Monitoring ${mergingCardsRef.current.length} card(s) with merges in progress`);
 
-    const interval = setInterval(async () => {
+    const pollMergeStatus = async () => {
       try {
-        // Recarregar apenas os cards que estão sendo merged
         const updatedCards = await cardsApi.fetchCards();
+        const currentMergingCards = mergingCardsRef.current;
 
-        for (const oldCard of cardsBeingMerged) {
+        for (const oldCard of currentMergingCards) {
           const updatedCard = updatedCards.find(c => c.id === oldCard.id);
 
           if (!updatedCard) continue;
@@ -273,10 +319,11 @@ function App() {
       } catch (error) {
         console.error('[App] Error polling merge status:', error);
       }
-    }, 5000); // Poll a cada 5 segundos
+    };
 
+    const interval = setInterval(pollMergeStatus, 5000);
     return () => clearInterval(interval);
-  }, [cards]);
+  }, [cards.filter(c => c.mergeStatus === 'resolving' || c.mergeStatus === 'merging').length]); // Dependência mais específica
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -316,6 +363,18 @@ function App() {
         card.id === updatedCard.id ? updatedCard : card
       )
     );
+  };
+
+  // Função para navegar entre views com persistência
+  const handleNavigate = (module: ModuleType) => {
+    setCurrentView(module);
+    saveView(module);
+  };
+
+  // Callback para atualização reativa quando um card é criado
+  const handleCardCreated = (newCard: CardType) => {
+    // Adicionar o novo card à lista
+    setCards(prev => [...prev, newCard]);
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -481,7 +540,7 @@ function App() {
   const renderView = () => {
     switch (currentView) {
       case 'dashboard':
-        return <HomePage cards={cards} onNavigate={setCurrentView} />;
+        return <HomePage cards={cards} onNavigate={handleNavigate} />;
 
       case 'kanban':
         return (
@@ -507,6 +566,7 @@ function App() {
             onProjectSwitch={setCurrentProject}
             onProjectLoad={setCurrentProject}
             fetchLogsHistory={fetchLogsHistory}
+            onCardCreated={handleCardCreated}
           />
         );
 
@@ -543,7 +603,7 @@ function App() {
   }
 
   return (
-    <WorkspaceLayout currentModule={currentView} onNavigate={setCurrentView}>
+    <WorkspaceLayout currentModule={currentView} onNavigate={handleNavigate}>
       {renderView()}
       <div id="modal-root" />
     </WorkspaceLayout>
