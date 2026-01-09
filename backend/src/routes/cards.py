@@ -92,12 +92,25 @@ async def get_all_cards(db: AsyncSession = Depends(get_db)):
 async def get_card(card_id: str, db: AsyncSession = Depends(get_db)):
     """Get a single card by ID."""
     repo = CardRepository(db)
+    exec_repo = ExecutionRepository(db)
     card = await repo.get_by_id(card_id)
 
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
 
-    return CardSingleResponse(card=CardResponse.model_validate(card))
+    card_dict = card.to_dict()
+
+    # Buscar token stats para o card
+    token_stats = await exec_repo.get_token_stats_for_card(card.id)
+    if token_stats.get("totalTokens", 0) > 0:
+        card_dict["tokenStats"] = TokenStats(**token_stats)
+
+    # Buscar cost stats para o card
+    cost_stats = await exec_repo.get_cost_stats_for_card(card.id)
+    if cost_stats.get("totalCost", 0.0) > 0:
+        card_dict["costStats"] = CostStats(**cost_stats)
+
+    return CardSingleResponse(card=CardResponse.model_validate(card_dict))
 
 
 @router.post("", response_model=CardSingleResponse, status_code=201)

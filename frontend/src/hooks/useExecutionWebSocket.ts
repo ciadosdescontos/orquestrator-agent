@@ -6,6 +6,7 @@ interface ExecutionCompleteMessage {
   status: 'success' | 'error';
   command: string;
   tokenStats?: { inputTokens: number; outputTokens: number; totalTokens: number };
+  costStats?: { totalCost: number; planCost: number; implementCost: number; testCost: number; reviewCost: number };
   error?: string;
   timestamp: string;
 }
