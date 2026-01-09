@@ -14,8 +14,6 @@ import type {
   ProductivityResponse,
   HourlyMetricsResponse,
   DateRange,
-  Granularity,
-  GroupBy,
   PeriodComparison,
 } from '../types/metrics';
 import { API_CONFIG } from './config';
