@@ -55,21 +55,6 @@ async def lifespan(app: FastAPI):
     print("[Server] Creating database tables...")
     await create_tables()
     print("[Server] Database tables created successfully")
-
-    # Run pending migrations
-    print("[Server] Checking for pending migrations...")
-    from .services.migration_service import MigrationService
-    try:
-        results = MigrationService.run_migrations_for_all_projects()
-        if results:
-            for result in results:
-                status = "✅" if result["success"] else "❌"
-                print(f"[Server] {status} {result['project']}: {', '.join(result['messages'])}")
-        else:
-            print("[Server] No project databases found")
-    except Exception as e:
-        print(f"[Server] Warning: Failed to run migrations: {e}")
-
     yield
     # Shutdown: cleanup if needed
     print("[Server] Shutting down...")

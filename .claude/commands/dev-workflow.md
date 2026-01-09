@@ -48,6 +48,12 @@ Apresente resumo:
 - Feature/Bug trabalhado
 - Arquivos modificados/criados
 - Status dos testes
+
+**IMPORTANTE - Migrations de Banco de Dados:**
+- Se você adicionou/modificou tabelas ou colunas no banco de dados, certifique-se de:
+  1. Criar um arquivo de migration SQL em `backend/migrations/XXX_description.sql`
+  2. As migrations serão executadas AUTOMATICAMENTE quando o card chegar em "done" no Kanban
+  3. Não é necessário executar migrations manualmente - elas rodam no workflow do Kanban
 - Resultado da revisão
 - Próximos passos sugeridos (PR, code review, etc.)
 
