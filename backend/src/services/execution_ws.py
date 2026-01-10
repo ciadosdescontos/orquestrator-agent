@@ -34,13 +34,14 @@ class ExecutionWebSocketManager:
             self.connections[card_id].discard(ws)
 
     async def notify_complete(self, card_id: str, status: str, command: str,
-                              token_stats: dict = None, error: str = None):
+                              token_stats: dict = None, cost_stats: dict = None, error: str = None):
         await self.broadcast(card_id, {
             "type": "execution_complete",
             "cardId": card_id,
             "status": status,
             "command": command,
             "tokenStats": token_stats,
+            "costStats": cost_stats,
             "error": error,
             "timestamp": datetime.now().isoformat()
         })

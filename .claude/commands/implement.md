@@ -66,6 +66,14 @@ Para cada arquivo listado na seção "Arquivos a Serem Modificados/Criados":
 - **Mantenha** consistência com padrões existentes na codebase
 - Se encontrar ambiguidades no plano, pergunte antes de prosseguir
 
+### Migrations de Banco de Dados
+
+**IMPORTANTE:** Se sua implementação incluir mudanças no banco de dados:
+- Crie um arquivo SQL de migration em `backend/migrations/XXX_description.sql`
+- Use o próximo número sequencial disponível (verifique os arquivos existentes)
+- As migrations serão executadas AUTOMATICAMENTE quando o card chegar em "done" no Kanban
+- Não execute migrations manualmente - o sistema de workflow cuida disso
+
 ## Formato de Atualização de Checkboxes
 
 Ao completar um objetivo:

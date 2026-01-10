@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.card import Card
+from ..models.activity_log import ActivityType
 from ..schemas.card import CardCreate, CardUpdate, ColumnId
 
 
@@ -61,6 +62,17 @@ class CardRepository:
         self.session.add(card)
         await self.session.flush()
         await self.session.refresh(card)
+
+        # Log activity
+        from .activity_repository import ActivityRepository
+        activity_repo = ActivityRepository(self.session)
+        await activity_repo.log_activity(
+            card_id=card.id,
+            activity_type=ActivityType.CREATED,
+            to_column="backlog",
+            description=f"Card '{card.title}' criado"
+        )
+
         return card
 
     async def update(self, card_id: str, card_data: CardUpdate) -> Optional[Card]:
@@ -70,12 +82,29 @@ class CardRepository:
             return None
 
         update_data = card_data.model_dump(exclude_unset=True, by_alias=False)
+
+        # Track if any important fields changed
+        has_changes = False
         for field, value in update_data.items():
             if value is not None:
+                old_value = getattr(card, field, None)
+                if old_value != value:
+                    has_changes = True
                 setattr(card, field, value)
 
         await self.session.flush()
         await self.session.refresh(card)
+
+        # Log activity if there were changes
+        if has_changes:
+            from .activity_repository import ActivityRepository
+            activity_repo = ActivityRepository(self.session)
+            await activity_repo.log_activity(
+                card_id=card_id,
+                activity_type=ActivityType.UPDATED,
+                description=f"Card '{card.title}' atualizado"
+            )
+
         return card
 
     async def delete(self, card_id: str) -> bool:
@@ -116,6 +145,46 @@ class CardRepository:
         card.column_id = new_column_id
         await self.session.flush()
         await self.session.refresh(card)
+
+        # Log activity
+        from .activity_repository import ActivityRepository
+        activity_repo = ActivityRepository(self.session)
+
+        # Determine activity type based on target column
+        if new_column_id == "done":
+            activity_type = ActivityType.COMPLETED
+        elif new_column_id == "archived":
+            activity_type = ActivityType.ARCHIVED
+        else:
+            activity_type = ActivityType.MOVED
+
+        await activity_repo.log_activity(
+            card_id=card_id,
+            activity_type=activity_type,
+            from_column=current_column,
+            to_column=new_column_id,
+            description=f"Card movido de '{current_column}' para '{new_column_id}'"
+        )
+
+        # Run database migrations when card reaches "done"
+        if new_column_id == "done":
+            from ..services.migration_service import MigrationService
+            from pathlib import Path
+            try:
+                # Get current project database path
+                claude_db = Path(".claude/database.db")
+                if claude_db.exists():
+                    print(f"[CardRepository] Running migrations for card {card.title} reaching done...")
+                    service = MigrationService(str(claude_db))
+                    success, messages = service.apply_all_pending_migrations()
+                    if success:
+                        print(f"[CardRepository] ✅ Migrations completed: {', '.join(messages)}")
+                    else:
+                        print(f"[CardRepository] ⚠️ Migration warnings: {', '.join(messages)}")
+            except Exception as e:
+                # Don't fail the card move if migrations fail
+                print(f"[CardRepository] ⚠️ Failed to run migrations: {e}")
+
         return card, None
 
     async def update_spec_path(self, card_id: str, spec_path: str) -> Optional[Card]:

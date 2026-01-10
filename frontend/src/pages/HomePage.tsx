@@ -4,6 +4,10 @@ import { ModuleType } from '../layouts/WorkspaceLayout';
 import MetricCard from '../components/Dashboard/MetricCard';
 import ActivityFeed from '../components/Dashboard/ActivityFeed';
 import ProgressChart from '../components/Dashboard/ProgressChart';
+import TokenUsagePanel from '../components/Dashboard/TokenUsagePanel';
+import CostBreakdown from '../components/Dashboard/CostBreakdown';
+import ExecutionMetrics from '../components/Dashboard/ExecutionMetrics';
+import { useDashboardMetrics } from '../hooks/useDashboardMetrics';
 import styles from './HomePage.module.css';
 import '../styles/dashboard-theme.css';
 
@@ -13,6 +17,14 @@ interface HomePageProps {
 }
 
 const HomePage = ({ cards, onNavigate }: HomePageProps) => {
+  // Fetch enhanced metrics from API
+  const {
+    tokenData,
+    costData,
+    executionData,
+    isLoading: metricsLoading
+  } = useDashboardMetrics();
+
   // Métricas calculadas com correção do bug do contador "Em Progresso"
   const metrics = useMemo(() => {
     const getCountByColumn = (columnId: ColumnId) =>
@@ -162,8 +174,39 @@ const HomePage = ({ cards, onNavigate }: HomePageProps) => {
               <h2 className={styles.sectionTitle}>Recent Activity</h2>
             </div>
             <div className={styles.activityCard}>
-              <ActivityFeed cards={cards} maxItems={8} />
+              <ActivityFeed maxItems={8} autoRefresh={true} refreshInterval={30000} />
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Enhanced Metrics Section */}
+      <section className={styles.enhancedMetricsSection}>
+        {/* Token Usage & Cost Analysis Row */}
+        <div className={styles.metricsRow}>
+          <div className={styles.tokenUsageColumn}>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>Token Usage</h2>
+              <span className={styles.periodBadge}>Last 7 days</span>
+            </div>
+            <TokenUsagePanel data={tokenData} loading={metricsLoading} />
+          </div>
+
+          <div className={styles.costAnalysisColumn}>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>Cost Analysis</h2>
+            </div>
+            <CostBreakdown data={costData} loading={metricsLoading} />
+          </div>
+        </div>
+
+        {/* Execution Metrics Row */}
+        <div className={styles.metricsRow}>
+          <div className={styles.executionColumn}>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>Execution Performance</h2>
+            </div>
+            <ExecutionMetrics data={executionData} loading={metricsLoading} />
           </div>
         </div>
       </section>

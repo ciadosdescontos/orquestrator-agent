@@ -1,0 +1,368 @@
+.metricsPage {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  background: var(--background-primary, #ffffff);
+  min-height: 100vh;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.header h1 {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--text-primary, #1a1a1a);
+  margin: 0;
+}
+
+.filters {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.dateRangeSelect {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 0.5rem;
+  background: var(--background-secondary, #f5f5f5);
+  color: var(--text-primary, #1a1a1a);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dateRangeSelect:hover {
+  border-color: var(--primary-color, #6366f1);
+}
+
+.refreshButton {
+  padding: 0.5rem 1.5rem;
+  background: var(--primary-color, #6366f1);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.refreshButton:hover {
+  background: var(--primary-color-dark, #4f46e5);
+  transform: translateY(-1px);
+}
+
+/* Insights Panel */
+.insightsPanel {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: var(--background-secondary, #f9fafb);
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-color, #e0e0e0);
+}
+
+.insightsPanel h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  color: var(--text-primary, #1a1a1a);
+}
+
+.insightsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.insight {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border-left: 4px solid;
+}
+
+.insight.info {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.insight.warning {
+  background: #fffbeb;
+  border-color: #f59e0b;
+}
+
+.insight.optimization {
+  background: #f0fdf4;
+  border-color: #10b981;
+}
+
+.insight.error {
+  background: #fef2f2;
+  border-color: #ef4444;
+}
+
+.insightIcon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.insightContent h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.insightContent p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+/* Metrics Grid */
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.metricCard {
+  padding: 1.5rem;
+  background: white;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-color, #e0e0e0);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s;
+}
+
+.metricCard:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.metricHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.metricIcon {
+  font-size: 1.5rem;
+}
+
+.metricLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.metricValue {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary, #1a1a1a);
+  margin-bottom: 0.5rem;
+}
+
+.metricSubtitle {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+/* Sections */
+.section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-color, #e0e0e0);
+}
+
+.section h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 1.5rem 0;
+  color: var(--text-primary, #1a1a1a);
+}
+
+/* Simple Chart */
+.chartContainer {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.simpleChart {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  min-height: 200px;
+  padding: 1rem 0;
+}
+
+.chartBar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 40px;
+}
+
+.chartBarFill {
+  width: 100%;
+  background: linear-gradient(to top, #6366f1, #8b5cf6);
+  border-radius: 4px 4px 0 0;
+  transition: all 0.3s;
+  cursor: pointer;
+}
+
+.chartBarFill:hover {
+  filter: brightness(1.1);
+}
+
+.chartBarLabel {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary, #6b7280);
+  transform: rotate(-45deg);
+  white-space: nowrap;
+}
+
+/* Tables */
+.costTable,
+.executionsTable {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.costTable table,
+.executionsTable table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.costTable th,
+.costTable td,
+.executionsTable th,
+.executionsTable td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+}
+
+.costTable th,
+.executionsTable th {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--background-secondary, #f9fafb);
+}
+
+.costTable td,
+.executionsTable td {
+  font-size: 0.875rem;
+  color: var(--text-primary, #1a1a1a);
+}
+
+.costTable code,
+.executionsTable code {
+  padding: 0.25rem 0.5rem;
+  background: var(--background-secondary, #f3f4f6);
+  border-radius: 0.25rem;
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 0.8125rem;
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.statusBadge.success {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.statusBadge.error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Loading & Error States */
+.loading,
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.loading {
+  color: var(--text-secondary, #6b7280);
+  font-size: 1.125rem;
+}
+
+.error h2 {
+  color: #ef4444;
+  margin-bottom: 0.5rem;
+}
+
+.error p {
+  color: var(--text-secondary, #6b7280);
+  margin-bottom: 1.5rem;
+}
+
+.error button {
+  padding: 0.75rem 1.5rem;
+  background: var(--primary-color, #6366f1);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.error button:hover {
+  background: var(--primary-color-dark, #4f46e5);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .metricsPage {
+    padding: 1rem;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .metricsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .chartBarLabel {
+    transform: rotate(-90deg);
+  }
+}

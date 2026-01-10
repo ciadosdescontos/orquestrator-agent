@@ -1449,15 +1449,17 @@ async def execute_plan(
                 status=DBExecutionStatus.SUCCESS,
                 result=result_text
             )
-            # Busca token stats para notificacao
+            # Busca token stats e cost stats para notificacao
             token_stats = await repo.get_token_stats_for_card(card_id)
+            cost_stats = await repo.get_cost_stats_for_card(card_id)
 
             # Notificar via WebSocket
             await execution_ws_manager.notify_complete(
                 card_id=card_id,
                 status="success",
                 command="/plan",
-                token_stats=token_stats if token_stats.get("totalTokens", 0) > 0 else None
+                token_stats=token_stats if token_stats.get("totalTokens", 0) > 0 else None,
+                cost_stats=cost_stats if cost_stats.get("totalCost", 0) > 0 else None
             )
 
             # Busca execução completa para retornar logs
@@ -1706,15 +1708,17 @@ async def execute_implement(
                 status=DBExecutionStatus.SUCCESS,
                 result=result_text
             )
-            # Busca token stats para notificacao
+            # Busca token stats e cost stats para notificacao
             token_stats = await repo.get_token_stats_for_card(card_id)
+            cost_stats = await repo.get_cost_stats_for_card(card_id)
 
             # Notificar via WebSocket
             await execution_ws_manager.notify_complete(
                 card_id=card_id,
                 status="success",
                 command="/implement",
-                token_stats=token_stats if token_stats.get("totalTokens", 0) > 0 else None
+                token_stats=token_stats if token_stats.get("totalTokens", 0) > 0 else None,
+                cost_stats=cost_stats if cost_stats.get("totalCost", 0) > 0 else None
             )
 
             # Busca execução completa para retornar logs
@@ -2082,15 +2086,17 @@ async def execute_test_implementation(
                     status=DBExecutionStatus.SUCCESS,
                     result=result_text
                 )
-                # Busca token stats para notificacao
+                # Busca token stats e cost stats para notificacao
                 token_stats = await repo.get_token_stats_for_card(card_id)
+                cost_stats = await repo.get_cost_stats_for_card(card_id)
 
                 # Notificar via WebSocket
                 await execution_ws_manager.notify_complete(
                     card_id=card_id,
                     status="success",
                     command="/test-implementation",
-                    token_stats=token_stats if token_stats.get("totalTokens", 0) > 0 else None
+                    token_stats=token_stats if token_stats.get("totalTokens", 0) > 0 else None,
+                    cost_stats=cost_stats if cost_stats.get("totalCost", 0) > 0 else None
                 )
 
                 # Busca execução completa para retornar logs
@@ -2350,15 +2356,17 @@ async def execute_review(
                 status=DBExecutionStatus.SUCCESS,
                 result=result_text
             )
-            # Busca token stats para notificacao
+            # Busca token stats e cost stats para notificacao
             token_stats = await repo.get_token_stats_for_card(card_id)
+            cost_stats = await repo.get_cost_stats_for_card(card_id)
 
             # Notificar via WebSocket
             await execution_ws_manager.notify_complete(
                 card_id=card_id,
                 status="success",
                 command="/review",
-                token_stats=token_stats if token_stats.get("totalTokens", 0) > 0 else None
+                token_stats=token_stats if token_stats.get("totalTokens", 0) > 0 else None,
+                cost_stats=cost_stats if cost_stats.get("totalCost", 0) > 0 else None
             )
 
             # Busca execução completa para retornar logs
