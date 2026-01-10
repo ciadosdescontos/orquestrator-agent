@@ -1,0 +1,129 @@
+/* InsightsPanel - AI insights display */
+
+.insightsPanel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  min-height: 250px;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 200px;
+  color: var(--text-tertiary);
+  font-size: 14px;
+}
+
+.emptyState i {
+  font-size: 32px;
+  opacity: 0.3;
+}
+
+/* Insights List */
+.insightsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.insightCard {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--border-default);
+  transition: all 0.2s;
+}
+
+.insightCard:hover {
+  background: var(--bg-elevated);
+  transform: translateX(2px);
+}
+
+/* Insight Types */
+.insightCard.warning {
+  border-left-color: var(--accent-warning);
+}
+
+.insightCard.warning .insightIcon {
+  color: var(--accent-warning);
+}
+
+.insightCard.success {
+  border-left-color: var(--accent-success);
+}
+
+.insightCard.success .insightIcon {
+  color: var(--accent-success);
+}
+
+.insightCard.tip {
+  border-left-color: var(--accent-primary);
+}
+
+.insightCard.tip .insightIcon {
+  color: var(--accent-primary);
+}
+
+.insightCard.info {
+  border-left-color: var(--accent-info);
+}
+
+.insightCard.info .insightIcon {
+  color: var(--accent-info);
+}
+
+.insightIcon {
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.insightContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.insightMessage {
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.insightMetric {
+  display: flex;
+  gap: var(--space-2);
+  font-size: 12px;
+  margin-top: var(--space-1);
+}
+
+.metricLabel {
+  color: var(--text-tertiary);
+}
+
+.metricValue {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .insightCard {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .insightIcon {
+    font-size: 14px;
+  }
+}
