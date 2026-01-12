@@ -136,6 +136,7 @@ const HomePage = ({ cards, onNavigate }: HomePageProps) => {
             sparkline={metrics.sparkline}
             trend={12}
             trendPeriod="vs. semana passada"
+            highlighted={true}
           />
           <MetricCard
             title="Em Teste"

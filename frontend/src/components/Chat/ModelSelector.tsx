@@ -7,10 +7,11 @@ import styles from './ModelSelector.module.css';
  * Lista de modelos disponíveis com informações detalhadas
  */
 export const AVAILABLE_MODELS: AIModel[] = [
+  // Claude 3.5 Models (4.5 generation)
   {
-    id: 'opus-4.5',
-    name: 'Opus 4.5',
-    displayName: 'Opus 4.5',
+    id: 'claude-3.5-opus',
+    name: 'Claude 3.5 Opus',
+    displayName: 'Opus 3.5',
     provider: 'anthropic',
     maxTokens: 200000,
     description: 'Most powerful model for complex reasoning and advanced tasks',
@@ -20,21 +21,22 @@ export const AVAILABLE_MODELS: AIModel[] = [
     badge: 'Most Capable'
   },
   {
-    id: 'sonnet-4.5',
-    name: 'Sonnet 4.5',
-    displayName: 'Sonnet 4.5',
+    id: 'claude-3.5-sonnet',
+    name: 'Claude 3.5 Sonnet',
+    displayName: 'Sonnet 3.5',
     provider: 'anthropic',
     maxTokens: 200000,
     description: 'Balanced performance and speed for most tasks',
     performance: 'balanced',
     icon: '⚡',
     accent: 'anthropic',
-    badge: 'Best Value'
+    badge: 'Best Value',
+    default: true
   },
   {
-    id: 'haiku-4.5',
-    name: 'Haiku 4.5',
-    displayName: 'Haiku 4.5',
+    id: 'claude-3.5-haiku',
+    name: 'Claude 3.5 Haiku',
+    displayName: 'Haiku 3.5',
     provider: 'anthropic',
     maxTokens: 200000,
     description: 'Fast responses for simple tasks and quick interactions',
@@ -42,28 +44,32 @@ export const AVAILABLE_MODELS: AIModel[] = [
     icon: '🚀',
     accent: 'anthropic'
   },
+  // Google Gemini Models
   {
-    id: 'claude-3-sonnet',
-    name: 'Claude 3 Sonnet',
-    displayName: 'Sonnet (3.0)',
-    provider: 'anthropic',
-    maxTokens: 200000,
-    description: 'Previous generation balanced model',
+    id: 'gemini-2.0-flash',
+    name: 'Gemini 2.0 Flash',
+    displayName: 'Gemini 2.0 Flash',
+    provider: 'google',
+    maxTokens: 1000000,
+    description: 'Latest Gemini model with enhanced capabilities',
     performance: 'balanced',
-    icon: '💫',
-    accent: 'anthropic'
+    icon: '✨',
+    accent: 'google',
+    badge: 'New'
   },
   {
-    id: 'claude-3-opus',
-    name: 'Claude 3 Opus',
-    displayName: 'Opus (3.0)',
-    provider: 'anthropic',
-    maxTokens: 200000,
-    description: 'Previous generation powerful model',
+    id: 'gemini-1.5-pro',
+    name: 'Gemini 1.5 Pro',
+    displayName: 'Gemini Pro',
+    provider: 'google',
+    maxTokens: 2000000,
+    description: 'Google\'s most capable model with massive context window',
     performance: 'powerful',
-    icon: '🔮',
-    accent: 'anthropic'
+    icon: '🌟',
+    accent: 'google',
+    badge: '2M Context'
   },
+  // OpenAI Models
   {
     id: 'gpt-4-turbo',
     name: 'GPT-4 Turbo',
@@ -75,30 +81,6 @@ export const AVAILABLE_MODELS: AIModel[] = [
     icon: '🤖',
     accent: 'openai',
     badge: 'OpenAI'
-  },
-  // Modelos Gemini
-  {
-    id: 'gemini-3-pro',
-    name: 'Gemini 3 Pro',
-    displayName: 'Gemini Pro',
-    provider: 'google',
-    maxTokens: 1000000,
-    description: 'Google\'s most capable multimodal model with long context',
-    performance: 'powerful',
-    icon: '🌟',
-    accent: 'google',
-    badge: 'Long Context'
-  },
-  {
-    id: 'gemini-3-flash',
-    name: 'Gemini 3 Flash',
-    displayName: 'Gemini Flash',
-    provider: 'google',
-    maxTokens: 1000000,
-    description: 'Fast and efficient model for quick tasks',
-    performance: 'fastest',
-    icon: '⚡',
-    accent: 'google'
   }
 ];
 
