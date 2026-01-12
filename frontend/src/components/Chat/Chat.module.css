@@ -3,9 +3,26 @@
   flex-direction: column;
   height: 100%;
   width: 100%;
-  background: var(--bg-primary);
+  background: linear-gradient(
+    180deg,
+    var(--bg-secondary) 0%,
+    rgba(22, 22, 26, 0.95) 100%
+  );
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
   position: relative;
   overflow: hidden;
+  animation: slideInFromRight 0.3s var(--ease-spring);
+}
+
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 .chatHeader {
@@ -14,8 +31,14 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--space-5) var(--space-6);
-  background: var(--bg-tertiary);
-  border-bottom: 1px solid var(--border-default);
+  background: linear-gradient(
+    90deg,
+    rgba(6, 182, 212, 0.1) 0%,
+    transparent 50%,
+    rgba(124, 58, 237, 0.1) 100%
+  );
+  border-bottom: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px);
   z-index: 10;
 }
 
@@ -244,8 +267,16 @@
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
+  .chatContainer {
+    animation: none;
+  }
+
   .typingIndicator span,
   .errorMessage {
     animation: none;
+  }
+
+  .newChatButton:active:not(:disabled) {
+    transform: none;
   }
 }

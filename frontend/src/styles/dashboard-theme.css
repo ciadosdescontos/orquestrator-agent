@@ -10,13 +10,28 @@
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
 
+  /* Typography Scales */
+  --font-size-xs: 0.75rem;     /* 12px */
+  --font-size-sm: 0.875rem;    /* 14px */
+  --font-size-base: 1rem;      /* 16px */
+  --font-size-lg: 1.125rem;    /* 18px */
+  --font-size-xl: 1.25rem;     /* 20px */
+  --font-size-2xl: 1.5rem;     /* 24px */
+  --font-size-3xl: 1.875rem;   /* 30px */
+  --font-size-4xl: 2.25rem;    /* 36px */
+  --font-size-metric: 3rem;    /* 48px - For metric cards */
+
   /* ===== Deep Dark Color Palette ===== */
   /* Main Backgrounds - Deep Blue-Black */
   --bg-primary: #0F0F12;      /* Main App Background */
   --bg-secondary: #16161a;    /* Sidebar / Panels */
   --bg-tertiary: #1c1c21;     /* Cards / Inputs */
   --bg-elevated: #25252b;     /* Hover states / Dropdowns */
-  --bg-glass: rgba(22, 22, 26, 0.7); /* Glassmorphism */
+  --bg-glass: rgba(22, 22, 26, 0.8); /* Glassmorphism - Enhanced */
+
+  /* Glass Effects - Enhanced */
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-blur: 30px;
 
   /* Text - High Contrast */
   --text-primary: #ffffff;
@@ -67,6 +82,11 @@
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
   --shadow-glow: 0 0 15px rgba(124, 58, 237, 0.3);
 
+  /* Enhanced Glow Shadows */
+  --shadow-glow-cyan: 0 0 20px rgba(6, 182, 212, 0.4);
+  --shadow-glow-purple: 0 0 20px rgba(124, 58, 237, 0.4);
+  --shadow-glow-mixed: 0 0 20px rgba(6, 182, 212, 0.3), 0 0 40px rgba(124, 58, 237, 0.2);
+
   /* Spacing */
   --space-1: 4px;
   --space-2: 8px;
@@ -86,7 +106,10 @@
   /* Animation */
   --duration-fast: 150ms;
   --duration-normal: 250ms;
+  --duration-slow: 350ms;
   --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Base Classes */

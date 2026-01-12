@@ -1,4 +1,4 @@
-import { useState, KeyboardEvent } from 'react';
+import { useState, KeyboardEvent, useEffect, useRef } from 'react';
 import styles from './ChatInput.module.css';
 
 interface ChatInputProps {
@@ -8,6 +8,19 @@ interface ChatInputProps {
 
 export default function ChatInput({ onSend, disabled = false }: ChatInputProps) {
   const [message, setMessage] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize textarea based on content
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      // Reset height to auto to get correct scrollHeight
+      textarea.style.height = 'auto';
+      // Set new height based on content (max 200px)
+      const newHeight = Math.min(textarea.scrollHeight, 200);
+      textarea.style.height = `${newHeight}px`;
+    }
+  }, [message]);
 
   const handleSend = () => {
     const trimmedMessage = message.trim();
@@ -29,6 +42,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
       <div className={styles.inputWrapper}>
         <div className={styles.innerWrapper}>
           <textarea
+            ref={textareaRef}
             className={styles.textarea}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
