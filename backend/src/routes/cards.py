@@ -153,6 +153,15 @@ async def move_card(
 ):
     """Move a card to another column with SDLC validation."""
     repo = CardRepository(db)
+
+    # Get current card state before move
+    current_card = await repo.get_by_id(card_id)
+    if not current_card:
+        raise HTTPException(status_code=404, detail="Card not found")
+
+    from_column = current_card.column_id
+
+    # Perform the move
     card, error = await repo.move(card_id, move_data.column_id)
 
     if error:
@@ -173,6 +182,16 @@ async def move_card(
             except Exception as e:
                 # Log error but don't fail the move
                 print(f"Failed to capture diff for card {card_id}: {e}")
+
+    # Broadcast the change via WebSocket
+    from ..services.card_ws import card_ws_manager
+    card_dict = CardResponse.model_validate(card).model_dump()
+    await card_ws_manager.broadcast_card_moved(
+        card_id=card_id,
+        from_column=from_column,
+        to_column=move_data.column_id,
+        card_data=card_dict
+    )
 
     return CardSingleResponse(card=CardResponse.model_validate(card))
 
