@@ -4,6 +4,7 @@ import { Card as CardType, ExecutionStatus, WorkflowStatus, ExecutionHistory } f
 import { LogsModal } from '../LogsModal';
 import { CardEditModal } from '../CardEditModal';
 import { BranchIndicator } from '../BranchIndicator';
+import { ExpertBadges } from '../ExpertBadges';
 import { removeImage } from '../../utils/imageHandler';
 import { API_ENDPOINTS } from '../../api/config';
 import { formatCost } from '../../utils/costCalculator';
@@ -18,9 +19,10 @@ interface CardProps {
   workflowStatus?: WorkflowStatus;
   onRunWorkflow?: (card: CardType) => void;
   fetchLogsHistory?: (cardId: string) => Promise<{ cardId: string; history: ExecutionHistory[] } | null>;
+  isLoadingExperts?: boolean;
 }
 
-export function Card({ card, onRemove, onUpdateCard, isDragging = false, executionStatus, workflowStatus, onRunWorkflow, fetchLogsHistory }: CardProps) {
+export function Card({ card, onRemove, onUpdateCard, isDragging = false, executionStatus, workflowStatus, onRunWorkflow, fetchLogsHistory, isLoadingExperts }: CardProps) {
   const [isLogsOpen, setIsLogsOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [removingImageId, setRemovingImageId] = useState<string | null>(null);
@@ -192,6 +194,13 @@ export function Card({ card, onRemove, onUpdateCard, isDragging = false, executi
               />
             )}
           </div>
+          {(card.experts || isLoadingExperts) && (
+            <ExpertBadges
+              experts={card.experts}
+              isLoading={isLoadingExperts}
+              size="small"
+            />
+          )}
           {card.description && (
             <p className={styles.description}>{card.description}</p>
           )}

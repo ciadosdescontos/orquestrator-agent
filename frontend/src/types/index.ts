@@ -1,4 +1,18 @@
 export type ColumnId = 'backlog' | 'plan' | 'implement' | 'test' | 'review' | 'done' | 'completed' | 'archived' | 'cancelado';
+export type ExpertConfidence = 'high' | 'medium' | 'low';
+
+export interface ExpertMatch {
+  reason: string;
+  confidence: ExpertConfidence;
+  identified_at: string;
+  knowledge_summary?: string;
+  matched_keywords?: string[];
+}
+
+export interface CardExperts {
+  [expertId: string]: ExpertMatch;
+}
+
 export type ModelType =
   | 'opus-4.5' | 'sonnet-4.5' | 'haiku-4.5'  // Claude models
   | 'gemini-3-pro' | 'gemini-3-flash';  // Gemini models
@@ -98,6 +112,7 @@ export interface Card {
   costStats?: CostStats;
   // Campo para auto-limpeza
   completedAt?: string; // ISO timestamp quando o card foi movido para Done
+  experts?: CardExperts; // Experts identificados para este card
 }
 
 export interface Column {

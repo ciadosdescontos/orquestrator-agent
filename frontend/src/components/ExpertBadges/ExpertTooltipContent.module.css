@@ -1,0 +1,127 @@
+.tooltipContent {
+  min-width: 280px;
+  max-width: 400px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid;
+}
+
+.expertName {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+}
+
+.confidence {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  background: #f3f4f6;
+}
+
+.confidenceLabel {
+  font-weight: 500;
+}
+
+.confidenceValue {
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.confidence.high {
+  background: #10b981;
+  color: white;
+}
+
+.confidence.medium {
+  background: #f59e0b;
+  color: white;
+}
+
+.confidence.low {
+  background: #6b7280;
+  color: white;
+}
+
+.section {
+  margin-bottom: 12px;
+}
+
+.section:last-child {
+  margin-bottom: 8px;
+}
+
+.sectionTitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.reason,
+.summary {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #374151;
+  white-space: pre-wrap;
+}
+
+.keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.keyword {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.footer {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.timestamp {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .confidence {
+    background: #374151;
+  }
+
+  .sectionTitle {
+    color: #9ca3af;
+  }
+
+  .reason,
+  .summary {
+    color: #e5e7eb;
+  }
+
+  .footer {
+    border-color: #374151;
+  }
+
+  .timestamp {
+    color: #6b7280;
+  }
+}
