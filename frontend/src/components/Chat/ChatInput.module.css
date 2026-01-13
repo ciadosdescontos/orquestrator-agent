@@ -46,10 +46,11 @@
   font-size: 0.95rem;
   resize: none;
   outline: none;
-  min-height: 24px;
-  max-height: 120px;
+  min-height: 40px;
+  max-height: 200px;
   line-height: 1.5;
-  transition: all var(--duration-fast) var(--ease-out);
+  overflow-y: auto;
+  transition: height var(--duration-fast) var(--ease-out);
 }
 
 .textarea::placeholder {
@@ -59,6 +60,25 @@
 .textarea:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Custom scrollbar for textarea */
+.textarea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.textarea::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+}
+
+.textarea::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+
+.textarea::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
 }
 
 .sendButton {

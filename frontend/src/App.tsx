@@ -5,7 +5,7 @@ import { useAgentExecution } from './hooks/useAgentExecution';
 import { useWorkflowAutomation } from './hooks/useWorkflowAutomation';
 import { useChat } from './hooks/useChat';
 import { useViewPersistence } from './hooks/useViewPersistence';
-import { useCardWebSocket } from './hooks/useCardWebSocket';
+import { useCardWebSocket, CardMovedMessage, CardUpdatedMessage, CardCreatedMessage } from './hooks/useCardWebSocket';
 import * as cardsApi from './api/cards';
 import { getCurrentProject } from './api/projects';
 import WorkspaceLayout, { ModuleType } from './layouts/WorkspaceLayout';
@@ -104,7 +104,7 @@ function App() {
   // WebSocket para sincronização de cards em tempo real
   const { isConnected: cardsWsConnected } = useCardWebSocket({
     enabled: true,
-    onCardMoved: useCallback(async (message) => {
+    onCardMoved: useCallback(async (message: CardMovedMessage) => {
       console.log(`[App] Card moved via WebSocket: ${message.cardId}`);
 
       // Atualizar o card na lista local
@@ -119,13 +119,26 @@ function App() {
       }
     }, [getWorkflowStatus]),
 
-    onCardUpdated: useCallback((message) => {
+    onCardUpdated: useCallback((message: CardUpdatedMessage) => {
       console.log(`[App] Card updated via WebSocket: ${message.cardId}`);
 
       // Atualizar o card na lista local
       setCards(prev => prev.map(card =>
         card.id === message.cardId ? message.card : card
       ));
+    }, []),
+
+    onCardCreated: useCallback((message: CardCreatedMessage) => {
+      console.log(`[App] Card created via WebSocket: ${message.cardId}`);
+
+      // Adicionar o novo card à lista (evitar duplicatas)
+      setCards(prev => {
+        // Verificar se o card já existe (pode ter sido criado localmente)
+        if (prev.some(card => card.id === message.cardId)) {
+          return prev;
+        }
+        return [...prev, message.card];
+      });
     }, [])
   });
 

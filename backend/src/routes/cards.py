@@ -118,7 +118,17 @@ async def create_card(card_data: CardCreate, db: AsyncSession = Depends(get_db))
     """Create a new card in the backlog column."""
     repo = CardRepository(db)
     card = await repo.create(card_data)
-    return CardSingleResponse(card=CardResponse.model_validate(card))
+
+    # Broadcast the new card via WebSocket
+    from ..services.card_ws import card_ws_manager
+    card_response = CardResponse.model_validate(card)
+    card_dict = card_response.model_dump(by_alias=True, mode='json')
+    await card_ws_manager.broadcast_card_created(
+        card_id=card.id,
+        card_data=card_dict
+    )
+
+    return CardSingleResponse(card=card_response)
 
 
 @router.put("/{card_id}", response_model=CardSingleResponse)
@@ -185,7 +195,8 @@ async def move_card(
 
     # Broadcast the change via WebSocket
     from ..services.card_ws import card_ws_manager
-    card_dict = CardResponse.model_validate(card).model_dump()
+    card_response = CardResponse.model_validate(card)
+    card_dict = card_response.model_dump(by_alias=True, mode='json')
     await card_ws_manager.broadcast_card_moved(
         card_id=card_id,
         from_column=from_column,
@@ -193,7 +204,7 @@ async def move_card(
         card_data=card_dict
     )
 
-    return CardSingleResponse(card=CardResponse.model_validate(card))
+    return CardSingleResponse(card=card_response)
 
 
 @router.patch("/{card_id}/spec-path", response_model=CardSingleResponse)

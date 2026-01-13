@@ -10,6 +10,8 @@ export interface MetricCardProps {
   color: 'cyan' | 'purple' | 'green' | 'amber' | 'blue' | 'red';
   subtitle?: string;
   sparkline?: number[]; // Mini gráfico de linha [10, 20, 15, 25, 30]
+  highlighted?: boolean; // Destacar card com animação e glow
+  glowColor?: string; // Cor personalizada do glow
 }
 
 const MetricCard = ({
@@ -21,6 +23,8 @@ const MetricCard = ({
   color,
   subtitle,
   sparkline,
+  highlighted = false,
+  glowColor,
 }: MetricCardProps) => {
   const trendDirection = trend && trend > 0 ? 'up' : trend && trend < 0 ? 'down' : 'neutral';
   const trendColor = trendDirection === 'up' ? styles.trendUp : trendDirection === 'down' ? styles.trendDown : styles.trendNeutral;
@@ -67,7 +71,10 @@ const MetricCard = ({
   };
 
   return (
-    <div className={`${styles.metricCard} ${styles[`color-${color}`]}`}>
+    <div
+      className={`${styles.metricCard} ${styles[`color-${color}`]} ${highlighted ? styles.highlighted : ''}`}
+      style={glowColor ? { '--custom-glow-color': glowColor } as React.CSSProperties : undefined}
+    >
       <div className={styles.cardGlow} />
 
       <div className={styles.header}>

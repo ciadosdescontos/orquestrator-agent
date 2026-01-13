@@ -44,6 +44,17 @@ class CardWebSocketManager:
 
         await self._broadcast_to_all(message)
 
+    async def broadcast_card_created(self, card_id: str, card_data: dict):
+        """Notifica todos os clientes conectados sobre criação de novo card"""
+        message = {
+            "type": "card_created",
+            "cardId": card_id,
+            "card": card_data,
+            "timestamp": datetime.now().isoformat()
+        }
+
+        await self._broadcast_to_all(message)
+
     async def _broadcast_to_all(self, message: dict):
         """Envia mensagem para todos os clientes conectados"""
         dead = set()

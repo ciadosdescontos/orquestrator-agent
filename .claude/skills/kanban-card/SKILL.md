@@ -30,7 +30,7 @@ Do pedido do usuário, extraia:
 Execute o seguinte comando, substituindo os valores:
 
 ```bash
-curl -s -X POST http://localhost:8000/api/cards \
+curl -s -X POST http://localhost:3001/api/cards \
   -H "Content-Type: application/json" \
   -d '{"title": "TITULO_AQUI", "description": "DESCRICAO_AQUI"}'
 ```
@@ -38,7 +38,7 @@ curl -s -X POST http://localhost:8000/api/cards \
 Se não houver descrição, omita o campo:
 
 ```bash
-curl -s -X POST http://localhost:8000/api/cards \
+curl -s -X POST http://localhost:3001/api/cards \
   -H "Content-Type: application/json" \
   -d '{"title": "TITULO_AQUI"}'
 ```
@@ -57,7 +57,7 @@ Após executar, informe:
 **Ação**: Extrair título "Implementar login"
 **Comando**:
 ```bash
-curl -s -X POST http://localhost:8000/api/cards \
+curl -s -X POST http://localhost:3001/api/cards \
   -H "Content-Type: application/json" \
   -d '{"title": "Implementar login"}'
 ```
@@ -67,7 +67,7 @@ curl -s -X POST http://localhost:8000/api/cards \
 **Ação**: Extrair título e descrição
 **Comando**:
 ```bash
-curl -s -X POST http://localhost:8000/api/cards \
+curl -s -X POST http://localhost:3001/api/cards \
   -H "Content-Type: application/json" \
   -d '{"title": "Corrigir bug de timeout na API", "description": "O problema acontece quando a conexão demora mais de 30s"}'
 ```

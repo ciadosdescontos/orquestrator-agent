@@ -55,6 +55,47 @@ AVAILABLE_EXPERTS: Dict[str, ExpertConfig] = {
             "frontend/src/hooks/useAgent",
             "backend/src/routes/cards"
         ]
+    },
+    "frontend": {
+        "name": "Frontend Expert",
+        "knowledge_path": ".claude/commands/experts/frontend/KNOWLEDGE.md",
+        "keywords": [
+            "react", "componente", "component", "hook", "useState", "useEffect",
+            "tsx", "jsx", "css", "estilo", "style", "layout", "UI", "interface",
+            "dnd-kit", "drag", "drop", "vite", "typescript", "frontend",
+            "pagina", "page", "modal", "form", "input", "button", "theme",
+            "dark mode", "light mode", "responsive", "mobile"
+        ],
+        "file_patterns": [
+            "frontend/src/components/",
+            "frontend/src/hooks/",
+            "frontend/src/pages/",
+            "frontend/src/api/",
+            "frontend/src/types/",
+            "frontend/src/utils/",
+            "frontend/src/contexts/",
+            "frontend/src/styles/"
+        ]
+    },
+    "backend": {
+        "name": "Backend Expert",
+        "knowledge_path": ".claude/commands/experts/backend/KNOWLEDGE.md",
+        "keywords": [
+            "fastapi", "api", "endpoint", "route", "rota", "service", "servico",
+            "python", "pydantic", "schema", "dto", "websocket", "ws",
+            "streaming", "async", "await", "agent", "claude", "gemini",
+            "chat", "execution", "workflow", "backend", "servidor", "server"
+        ],
+        "file_patterns": [
+            "backend/src/routes/",
+            "backend/src/services/",
+            "backend/src/schemas/",
+            "backend/src/config/",
+            "backend/src/main.py",
+            "backend/src/agent",
+            "backend/src/execution.py",
+            "backend/src/project_manager.py"
+        ]
     }
 }
 
