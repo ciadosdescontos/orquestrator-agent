@@ -586,6 +586,10 @@ async def execute_plan_gemini(
     # Usar prompt embutido (Gemini CLI não reconhece comandos em worktrees)
     arguments = f"{title}: {description}"
     prompt = GEMINI_PLAN_PROMPT.format(arguments=arguments)
+
+    # Add working directory context to ensure files are saved in the correct location
+    prompt += f"\n\n**IMPORTANTE:** O diretório de trabalho é `{cwd}`. Salve todos os arquivos usando caminhos absolutos baseados neste diretório (ex: `{cwd}/specs/nome.md`)."
+
     if images:
         prompt += "\n\n[Imagens anexadas ao card estão disponíveis para análise]"
 
@@ -1285,6 +1289,9 @@ async def execute_plan(
     sdk_model = model_map.get(model, "opus")
 
     prompt = f"/plan {title}: {description}"
+
+    # Add working directory context to ensure files are saved in the correct location
+    prompt += f"\n\n**IMPORTANTE:** O diretório de trabalho é `{cwd}`. Salve todos os arquivos usando caminhos absolutos baseados neste diretório (ex: `{cwd}/specs/nome.md`)."
 
     # Add expert context if available
     if experts:

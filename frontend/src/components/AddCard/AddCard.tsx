@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ColumnId, ModelType, Card } from '../../types';
+import { ColumnId, ModelType } from '../../types';
 import { uploadImage } from '../../utils/imageHandler';
 import { AddCardModal } from '../AddCardModal/AddCardModal';
 import * as cardsApi from '../../api/cards';

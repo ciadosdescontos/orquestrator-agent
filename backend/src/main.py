@@ -27,6 +27,7 @@ from .execution import (
 )
 from pydantic import BaseModel
 from .routes.cards import router as cards_router
+from .routes.projects import get_project_manager
 from .routes.cards_ws import router as cards_ws_router
 from .routes.images import router as images_router
 from .routes.projects import router as projects_router
@@ -116,8 +117,8 @@ async def execute_plan_endpoint(request: ExecutePlanRequest):
     print(f"[Server] Description: {request.description or '(none)'}")
 
     try:
-        # Use parent directory as working directory (the main project)
-        cwd = str(Path.cwd().parent)
+        # Use the currently loaded project's directory as working directory
+        cwd = get_project_manager().get_working_directory()
 
         # Buscar card do banco para obter o modelo configurado e imagens
         async with async_session_maker() as session:
@@ -197,8 +198,8 @@ async def execute_implement_endpoint(request: ExecuteImplementRequest):
     print(f"[Server] Spec path: {request.spec_path}")
 
     try:
-        # Use parent directory as working directory (the main project)
-        cwd = str(Path.cwd().parent)
+        # Use the currently loaded project's directory as working directory
+        cwd = get_project_manager().get_working_directory()
 
         # Buscar card do banco para obter o modelo configurado e imagens
         # Mantém sessão aberta para passar ao execute_implement
@@ -264,7 +265,7 @@ async def execute_test_endpoint(request: ExecuteImplementRequest):
     print(f"[Server] Spec path: {request.spec_path}")
 
     try:
-        cwd = str(Path.cwd().parent)
+        cwd = get_project_manager().get_working_directory()
 
         # Buscar card do banco para obter o modelo configurado e imagens
         # Mantém sessão aberta para passar ao execute_test_implementation
@@ -330,7 +331,7 @@ async def execute_review_endpoint(request: ExecuteImplementRequest):
     print(f"[Server] Spec path: {request.spec_path}")
 
     try:
-        cwd = str(Path.cwd().parent)
+        cwd = get_project_manager().get_working_directory()
 
         # Buscar card do banco para obter o modelo configurado e imagens
         # Mantém sessão aberta para passar ao execute_review
@@ -406,7 +407,7 @@ async def execute_expert_triage_endpoint(request: ExpertTriageRequest):
     print(f"[Server] Title: {request.title}")
 
     try:
-        cwd = str(Path.cwd().parent)
+        cwd = get_project_manager().get_working_directory()
 
         async with async_session_maker() as db_session:
             result = await execute_expert_triage(
