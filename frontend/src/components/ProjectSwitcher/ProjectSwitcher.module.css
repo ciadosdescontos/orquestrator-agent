@@ -40,6 +40,31 @@
   z-index: 1000;
 }
 
+/* Experts Button */
+.expertsButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  background: var(--bg-surface);
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.expertsButton:hover {
+  background: var(--bg-hover);
+  color: var(--accent-primary);
+}
+
+.expertsButton svg {
+  color: var(--accent-primary);
+}
+
 .projectSwitcherTabs {
   display: flex;
   border-bottom: 1px solid var(--border-subtle);

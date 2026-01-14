@@ -29,7 +29,6 @@ interface KanbanPageProps {
   currentProject: Project | null;
   onProjectSwitch: (project: Project | null) => void;
   onProjectLoad: (project: Project | null) => void;
-  onCardCreated?: (newCard: CardType) => void;
   fetchLogsHistory?: (cardId: string) => Promise<{ cardId: string; history: any[] } | null>;
   loadingExpertsCardId?: string | null;
 }
@@ -55,7 +54,6 @@ const KanbanPage = ({
   currentProject,
   onProjectSwitch,
   onProjectLoad,
-  onCardCreated,
   fetchLogsHistory,
   loadingExpertsCardId,
 }: KanbanPageProps) => {
@@ -69,7 +67,7 @@ const KanbanPage = ({
           </p>
         </div>
         <div className={styles.projectActions}>
-          <AddCard columnId="backlog" onAdd={onAddCard} onCardCreated={onCardCreated} />
+          <AddCard columnId="backlog" onAdd={onAddCard} />
           <ProjectSwitcher
             currentProject={currentProject}
             onProjectSwitch={onProjectSwitch}

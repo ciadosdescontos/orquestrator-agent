@@ -437,12 +437,6 @@ function App() {
     saveView(module);
   };
 
-  // Callback para atualização reativa quando um card é criado
-  const handleCardCreated = (newCard: CardType) => {
-    // Adicionar o novo card à lista
-    setCards(prev => [...prev, newCard]);
-  };
-
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     const card = cards.find(c => c.id === active.id);
@@ -659,7 +653,6 @@ function App() {
             onProjectSwitch={setCurrentProject}
             onProjectLoad={setCurrentProject}
             fetchLogsHistory={fetchLogsHistory}
-            onCardCreated={handleCardCreated}
             loadingExpertsCardId={loadingExpertsCardId}
           />
         );

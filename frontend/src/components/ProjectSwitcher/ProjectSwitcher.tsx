@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Clock, Star, FolderOpen, ChevronDown, Search } from 'lucide-react';
+import { Clock, Star, FolderOpen, ChevronDown, Search, Brain } from 'lucide-react';
 import { Project } from '../../types';
 import { getRecentProjects, quickSwitchProject, toggleFavorite } from '../../api/projects';
+import { ExpertsModal } from '../ExpertsModal';
 import styles from './ProjectSwitcher.module.css';
 
 interface ProjectSwitcherProps {
@@ -15,6 +16,7 @@ export function ProjectSwitcher({ currentProject, onProjectSwitch }: ProjectSwit
   const [filter, setFilter] = useState('');
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'recent' | 'favorites'>('recent');
+  const [showExpertsModal, setShowExpertsModal] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -86,6 +88,18 @@ export function ProjectSwitcher({ currentProject, onProjectSwitch }: ProjectSwit
 
       {isOpen && (
         <div className={styles.projectSwitcherDropdown}>
+          {/* Botao Configurar Experts */}
+          <button
+            className={styles.expertsButton}
+            onClick={() => {
+              setShowExpertsModal(true);
+              setIsOpen(false);
+            }}
+          >
+            <Brain size={16} />
+            <span>Configurar Experts</span>
+          </button>
+
           <div className={styles.projectSwitcherTabs}>
             <button
               className={activeTab === 'recent' ? styles.active : ''}
@@ -151,6 +165,12 @@ export function ProjectSwitcher({ currentProject, onProjectSwitch }: ProjectSwit
           </div>
         </div>
       )}
+
+      {/* Modal de Configuracao de Experts */}
+      <ExpertsModal
+        isOpen={showExpertsModal}
+        onClose={() => setShowExpertsModal(false)}
+      />
     </div>
   );
 }

@@ -408,9 +408,7 @@ export function useWorkflowAutomation({
         });
       } else {
         // Execution already completed BEFORE refresh
-        // DON'T automatically continue - user refreshed after execution finished
-        // The card is already in the correct position, just update workflow status if needed
-        console.log(`[WorkflowRecovery] Execution already ${execution.status} for card ${cardId}, NOT continuing automatically`);
+        console.log(`[WorkflowRecovery] Execution already ${execution.status} for card ${cardId}`);
 
         if (execution.status === 'error') {
           // Update workflow status to reflect error state
@@ -423,9 +421,23 @@ export function useWorkflowAutomation({
             });
             return next;
           });
+        } else if (execution.status === 'success') {
+          // Execution succeeded - continue workflow from this stage
+          console.log(`[WorkflowRecovery] Continuing workflow for card ${cardId} from stage: ${status.stage}`);
+          recoveringWorkflowsRef.current.add(cardId);
+
+          // Re-fetch card to get latest state (specPath might have been updated)
+          cardsApi.fetchCards().then(latestCards => {
+            const latestCard = latestCards.find(c => c.id === cardId);
+            if (latestCard) {
+              continueWorkflowFromStage(latestCard, status.stage, 'success');
+            } else {
+              continueWorkflowFromStage(card, status.stage, 'success');
+            }
+          }).catch(() => {
+            continueWorkflowFromStage(card, status.stage, 'success');
+          });
         }
-        // If success, leave the card where it is - don't move it automatically
-        // The user can manually continue or the workflow was already completed
       }
     });
   }, [initialStatuses, cards, executions, registerCompletionCallback, continueWorkflowFromStage]);

@@ -2,6 +2,10 @@
 
 Identifies relevant expert agents for a card based on its title and description.
 Uses keyword matching to determine which experts should be consulted.
+
+IMPORTANTE:
+- Quando NÃO há projeto carregado (project_path=None): usa experts do orquestrador
+- Quando há projeto carregado: usa experts do projeto (pode ser vazio)
 """
 
 from __future__ import annotations
@@ -9,9 +13,9 @@ from __future__ import annotations
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
-from ..config.experts import AVAILABLE_EXPERTS, ExpertConfig
+from ..config.experts import get_experts, get_expert_config, ExpertConfig
 from ..schemas.expert import ExpertMatch
 
 
@@ -114,7 +118,8 @@ def _read_knowledge_summary(knowledge_path: str, cwd: str) -> str | None:
 def identify_experts(
     title: str,
     description: str | None = None,
-    cwd: str | None = None
+    cwd: str | None = None,
+    project_path: Optional[str] = None
 ) -> Dict[str, ExpertMatch]:
     """
     Identify relevant experts for a card based on its content.
@@ -123,10 +128,19 @@ def identify_experts(
         title: Card title
         description: Card description (optional)
         cwd: Working directory for reading knowledge files (optional)
+        project_path: Path do projeto carregado (None = orquestrador)
 
     Returns:
         Dict mapping expert_id to ExpertMatch with confidence and reason
+        Retorna {} (vazio) se não houver experts configurados no projeto
     """
+    # Obter experts baseado no contexto
+    available_experts = get_experts(project_path)
+
+    # Se não há experts, retorna vazio (não é erro)
+    if not available_experts:
+        return {}
+
     # Combine title and description for analysis
     text_to_analyze = title
     if description:
@@ -135,7 +149,7 @@ def identify_experts(
     identified_experts: Dict[str, ExpertMatch] = {}
     now = datetime.utcnow().isoformat() + "Z"
 
-    for expert_id, config in AVAILABLE_EXPERTS.items():
+    for expert_id, config in available_experts.items():
         matched_keywords, score = _calculate_keyword_matches(
             text_to_analyze,
             config["keywords"]
@@ -162,18 +176,23 @@ def identify_experts(
     return identified_experts
 
 
-def get_expert_knowledge_content(expert_id: str, cwd: str) -> str | None:
+def get_expert_knowledge_content(
+    expert_id: str,
+    cwd: str,
+    project_path: Optional[str] = None
+) -> str | None:
     """
     Read the full KNOWLEDGE.md content for an expert.
 
     Args:
         expert_id: ID of the expert
         cwd: Working directory (project root)
+        project_path: Path do projeto carregado (None = orquestrador)
 
     Returns:
         Full content of the KNOWLEDGE.md file or None if not found
     """
-    config = AVAILABLE_EXPERTS.get(expert_id)
+    config = get_expert_config(expert_id, project_path)
     if not config:
         return None
 
@@ -188,7 +207,8 @@ def get_expert_knowledge_content(expert_id: str, cwd: str) -> str | None:
 
 def build_expert_context_for_plan(
     experts: Dict[str, ExpertMatch | dict],
-    cwd: str
+    cwd: str,
+    project_path: Optional[str] = None
 ) -> str:
     """
     Build context string from identified experts to inject into plan prompt.
@@ -196,6 +216,7 @@ def build_expert_context_for_plan(
     Args:
         experts: Dict of identified experts (ExpertMatch objects or plain dicts)
         cwd: Working directory (project root)
+        project_path: Path do projeto carregado (None = orquestrador)
 
     Returns:
         Formatted string with expert context for the plan prompt
@@ -203,10 +224,13 @@ def build_expert_context_for_plan(
     if not experts:
         return ""
 
+    # Obter experts disponíveis para este contexto
+    available_experts = get_experts(project_path)
+
     context_parts = ["## Contexto dos Experts Relevantes\n"]
 
     for expert_id, match in experts.items():
-        config = AVAILABLE_EXPERTS.get(expert_id)
+        config = available_experts.get(expert_id)
         if not config:
             continue
 
@@ -222,7 +246,7 @@ def build_expert_context_for_plan(
         context_parts.append(f"**Identificado porque:** {reason}\n")
 
         # Read and include knowledge content
-        knowledge = get_expert_knowledge_content(expert_id, cwd)
+        knowledge = get_expert_knowledge_content(expert_id, cwd, project_path)
         if knowledge:
             # Truncate if too long (keep first ~2000 chars)
             if len(knowledge) > 2000:

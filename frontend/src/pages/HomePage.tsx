@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Card as CardType, ColumnId } from '../types';
 import { ModuleType } from '../layouts/WorkspaceLayout';
 import MetricCard from '../components/Dashboard/MetricCard';
@@ -22,8 +22,46 @@ const HomePage = ({ cards, onNavigate }: HomePageProps) => {
     tokenData,
     costData,
     executionData,
-    isLoading: metricsLoading
+    isLoading: metricsLoading,
+    error: metricsError,
+    lastUpdate: metricsLastUpdate,
+    refresh: refreshMetrics
   } = useDashboardMetrics();
+
+  // Local state for update indicator
+  const [currentTime, setCurrentTime] = useState(Date.now());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Update current time every second for the "Xs ago" indicator
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentTime(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Format last update time
+  const formatLastUpdate = () => {
+    if (!metricsLastUpdate) return '';
+    const diffMs = currentTime - metricsLastUpdate;
+    const diffSecs = Math.floor(diffMs / 1000);
+
+    if (diffSecs < 5) return 'agora';
+    if (diffSecs < 60) return `há ${diffSecs}s`;
+    const diffMins = Math.floor(diffSecs / 60);
+    if (diffMins < 60) return `há ${diffMins}min`;
+    return `há ${Math.floor(diffMins / 60)}h`;
+  };
+
+  // Manual refresh handler
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshMetrics();
+    } catch (e) {
+      console.error('Error refreshing metrics:', e);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Métricas calculadas com correção do bug do contador "Em Progresso"
   const metrics = useMemo(() => {
@@ -89,8 +127,7 @@ const HomePage = ({ cards, onNavigate }: HomePageProps) => {
     <div className={styles.homepage}>
       {/* Background effects */}
       <div className={styles.backgroundEffects}>
-        <div className="dashboard-mesh-overlay" />
-        <div className="dashboard-noise-texture" />
+        <div className={styles.meshGradient} />
       </div>
 
       {/* Hero Section */}
@@ -103,16 +140,63 @@ const HomePage = ({ cards, onNavigate }: HomePageProps) => {
             Visão geral do seu workspace • {metrics.activeCards} cards ativos
           </p>
         </div>
-        <div className={styles.heroStats}>
-          <div className={styles.heroStat}>
-            <span className={styles.heroStatValue}>{metrics.completionRate.toFixed(0)}%</span>
-            <span className={styles.heroStatLabel}>Taxa de conclusão</span>
-          </div>
-          <div className={styles.heroStatDivider} />
-          <div className={styles.heroStat}>
-            <span className={styles.heroStatValue}>{metrics.velocity}</span>
-            <span className={styles.heroStatLabel}>Velocidade/semana</span>
-          </div>
+        <div className={styles.heroActions}>
+          {metricsError && (
+            <span className={styles.errorMessage}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M8 5V8M8 11H8.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              Erro ao atualizar
+            </span>
+          )}
+          {metricsLastUpdate > 0 && !metricsError && (
+            <span className={styles.lastUpdate}>
+              {formatLastUpdate()}
+            </span>
+          )}
+          <button
+            className={styles.refreshButton}
+            onClick={handleRefresh}
+            disabled={isRefreshing || metricsLoading}
+            title="Atualizar métricas"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+              style={{ animation: isRefreshing ? 'spin 1s linear infinite' : 'none' }}
+            >
+              <path
+                d="M13.3333 6.00001C13.3333 8.94552 10.9455 11.3333 8 11.3333C5.05448 11.3333 2.66667 8.94552 2.66667 6.00001"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+              <path
+                d="M13.3333 6.00001H11.3333M13.3333 6.00001V8.00001"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M2.66667 10V8"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M2.66667 10H4.66667"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
         </div>
       </section>
 
@@ -120,40 +204,48 @@ const HomePage = ({ cards, onNavigate }: HomePageProps) => {
       <section className={styles.metricsSection}>
         <h2 className={styles.sectionTitle}>Métricas Principais</h2>
         <div className={styles.metricsGrid}>
-          <MetricCard
-            title="Backlog"
-            value={metrics.backlog}
-            icon={<i className="fa-solid fa-clipboard-list"></i>}
-            color="cyan"
-            subtitle="Aguardando planejamento"
-          />
-          <MetricCard
-            title="Em Progresso"
-            value={metrics.inProgress}
-            icon={<i className="fa-solid fa-bolt"></i>}
-            color="amber"
-            subtitle={`${metrics.implementing} impl • ${metrics.testing} test • ${metrics.reviewing} review`}
-            sparkline={metrics.sparkline}
-            trend={12}
-            trendPeriod="vs. semana passada"
-            highlighted={true}
-          />
-          <MetricCard
-            title="Em Teste"
-            value={metrics.testing}
-            icon={<i className="fa-solid fa-flask"></i>}
-            color="purple"
-            subtitle="Validação em andamento"
-          />
-          <MetricCard
-            title="Concluídos"
-            value={metrics.done}
-            icon={<i className="fa-solid fa-circle-check"></i>}
-            color="green"
-            subtitle="Prontos para produção"
-            trend={8}
-            trendPeriod="últimos 7 dias"
-          />
+          <div style={{ '--index': 0 } as React.CSSProperties}>
+            <MetricCard
+              title="Backlog"
+              value={metrics.backlog}
+              icon={<i className="fa-solid fa-clipboard-list"></i>}
+              color="cyan"
+              subtitle="Aguardando planejamento"
+            />
+          </div>
+          <div style={{ '--index': 1 } as React.CSSProperties}>
+            <MetricCard
+              title="Em Progresso"
+              value={metrics.inProgress}
+              icon={<i className="fa-solid fa-bolt"></i>}
+              color="amber"
+              subtitle={`${metrics.implementing} impl • ${metrics.testing} test • ${metrics.reviewing} review`}
+              sparkline={metrics.sparkline}
+              trend={12}
+              trendPeriod="vs. semana passada"
+              highlighted={true}
+            />
+          </div>
+          <div style={{ '--index': 2 } as React.CSSProperties}>
+            <MetricCard
+              title="Em Teste"
+              value={metrics.testing}
+              icon={<i className="fa-solid fa-flask"></i>}
+              color="purple"
+              subtitle="Validação em andamento"
+            />
+          </div>
+          <div style={{ '--index': 3 } as React.CSSProperties}>
+            <MetricCard
+              title="Concluídos"
+              value={metrics.done}
+              icon={<i className="fa-solid fa-circle-check"></i>}
+              color="green"
+              subtitle="Prontos para produção"
+              trend={8}
+              trendPeriod="últimos 7 dias"
+            />
+          </div>
         </div>
       </section>
 
@@ -175,7 +267,7 @@ const HomePage = ({ cards, onNavigate }: HomePageProps) => {
               <h2 className={styles.sectionTitle}>Recent Activity</h2>
             </div>
             <div className={styles.activityCard}>
-              <ActivityFeed maxItems={8} autoRefresh={true} refreshInterval={30000} />
+              <ActivityFeed maxItems={8} autoRefresh={true} refreshInterval={10000} />
             </div>
           </div>
         </div>
