@@ -487,7 +487,7 @@ async def get_execution(card_id: str, db_session: Optional[AsyncSession] = None)
                 "cardId": record.card_id,
                 "status": record.status.value,
                 "logs": [
-                    {"timestamp": log.timestamp, "type": log.type.value, "content": log.content}
+                    {"timestamp": log.timestamp, "type": log.type.value if hasattr(log.type, "value") else log.type, "content": log.content}
                     for log in record.logs
                 ]
             }
@@ -2535,35 +2535,12 @@ async def execute_expert_triage(
     if description:
         prompt += f" {description}"
 
-    # Usar repository se disponível
-    repo = None
-    execution_db = None
+    # NOTE: Triage não cria execution separada no banco
+    # Os logs do triage serão incluídos na execution do /plan
+    # Isso evita race condition onde a UI mostra status do triage em vez do plan
 
-    if db_session:
-        repo = ExecutionRepository(db_session)
-        execution_db = await repo.create_execution(
-            card_id=card_id,
-            command="/expert-triage",
-            title=f"triage:{title[:30]}"
-        )
-        await repo.add_log(
-            execution_id=execution_db.id,
-            log_type="info",
-            content=f"Starting AI expert triage for: {title}"
-        )
-
-    # Initialize execution record (memory)
-    record = ExecutionRecord(
-        cardId=card_id,
-        title=f"triage:{title[:30]}",
-        startedAt=datetime.now().isoformat(),
-        status=ExecutionStatus.RUNNING,
-        logs=[],
-    )
-    executions[card_id] = record
-
-    add_log(record, LogType.INFO, f"Starting AI expert triage for: {title}")
-    add_log(record, LogType.INFO, f"Working directory: {project_path}")
+    print(f"[Agent] Expert triage for: {title[:50]}")
+    print(f"[Agent] Working directory: {project_path}")
 
     result_text = ""
 
@@ -2582,27 +2559,14 @@ async def execute_expert_triage(
             if isinstance(message, AssistantMessage):
                 for block in message.content:
                     if isinstance(block, TextBlock):
-                        add_log(record, LogType.TEXT, block.text)
-                        if repo and execution_db:
-                            await repo.add_log(
-                                execution_id=execution_db.id,
-                                log_type="text",
-                                content=block.text
-                            )
+                        print(f"[Agent] [TRIAGE] {block.text[:100]}...")
                         result_text += block.text + "\n"
                     elif isinstance(block, ToolUseBlock):
-                        add_log(record, LogType.TOOL, f"Using tool: {block.name}")
-                        if repo and execution_db:
-                            await repo.add_log(
-                                execution_id=execution_db.id,
-                                log_type="tool",
-                                content=f"Using tool: {block.name}"
-                            )
+                        print(f"[Agent] [TRIAGE] Using tool: {block.name}")
 
             elif isinstance(message, ResultMessage):
                 if hasattr(message, "result") and message.result:
                     result_text = message.result
-                    add_log(record, LogType.RESULT, message.result)
 
         # Parse JSON from result
         experts = {}
@@ -2613,29 +2577,18 @@ async def execute_expert_triage(
                 json_str = json_match.group(1)
                 parsed = json.loads(json_str)
                 experts = parsed.get("experts", {})
-                add_log(record, LogType.INFO, f"Identified {len(experts)} experts via AI")
+                print(f"[Agent] Identified {len(experts)} experts via AI")
             else:
                 # Try to parse entire result as JSON
                 parsed = json.loads(result_text.strip())
                 experts = parsed.get("experts", {})
-                add_log(record, LogType.INFO, f"Identified {len(experts)} experts via AI")
+                print(f"[Agent] Identified {len(experts)} experts via AI")
         except json.JSONDecodeError as e:
-            add_log(record, LogType.ERROR, f"Failed to parse JSON: {e}")
+            print(f"[Agent] Failed to parse triage JSON: {e}")
             # Return empty experts on parse error
             experts = {}
 
-        # Mark as success
-        record.completed_at = datetime.now().isoformat()
-        record.status = ExecutionStatus.SUCCESS
-        record.result = result_text
-        add_log(record, LogType.INFO, "Expert triage completed successfully")
-
-        if repo and execution_db:
-            await repo.update_execution_status(
-                execution_id=execution_db.id,
-                status=DBExecutionStatus.SUCCESS,
-                result=result_text
-            )
+        print(f"[Agent] Expert triage completed successfully")
 
         return {
             "success": True,
@@ -2645,22 +2598,7 @@ async def execute_expert_triage(
 
     except Exception as e:
         error_message = str(e)
-        record.completed_at = datetime.now().isoformat()
-        record.status = ExecutionStatus.ERROR
-        record.result = error_message
-        add_log(record, LogType.ERROR, f"Expert triage error: {error_message}")
-
-        if repo and execution_db:
-            await repo.add_log(
-                execution_id=execution_db.id,
-                log_type="error",
-                content=error_message
-            )
-            await repo.update_execution_status(
-                execution_id=execution_db.id,
-                status=DBExecutionStatus.ERROR,
-                result=error_message
-            )
+        print(f"[Agent] Expert triage error: {error_message}")
 
         return {
             "success": False,

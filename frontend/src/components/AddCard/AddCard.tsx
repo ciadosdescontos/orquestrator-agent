@@ -8,10 +8,9 @@ import styles from './AddCard.module.css';
 interface AddCardProps {
   columnId: ColumnId;
   onAdd: (title: string, description: string, columnId: ColumnId) => void; // Mantido por compatibilidade
-  onCardCreated?: (newCard: Card) => void; // Nova prop para atualização reativa
 }
 
-export function AddCard({ onCardCreated }: AddCardProps) {
+export function AddCard({}: AddCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleSubmit = async (cardData: {
@@ -53,8 +52,8 @@ export function AddCard({ onCardCreated }: AddCardProps) {
         newCard.images = uploadedImages;
       }
 
-      // Notificar parent component sobre novo card (atualização reativa)
-      onCardCreated?.(newCard);
+      // WebSocket irá notificar automaticamente sobre o novo card
+      // Não precisa chamar onCardCreated aqui para evitar duplicação
 
       // Fechar modal
       setIsModalOpen(false);

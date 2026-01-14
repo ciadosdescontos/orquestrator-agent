@@ -49,6 +49,10 @@ class ExecutionRepository:
 
         self.db.add(execution)
         await self.db.commit()
+
+        # Invalida cache para forçar reload da nova execução
+        execution_cache.invalidate(card_id)
+
         return execution
 
     async def add_log(
@@ -104,6 +108,12 @@ class ExecutionRepository:
         workflow_stage: Optional[str] = None
     ):
         """Atualiza status de uma execução"""
+        # Busca card_id para invalidar cache
+        exec_result = await self.db.execute(
+            select(Execution.card_id).where(Execution.id == execution_id)
+        )
+        card_id = exec_result.scalar_one_or_none()
+
         values = {
             "status": status,
             "completed_at": datetime.utcnow() if status != ExecutionStatus.RUNNING else None
@@ -115,12 +125,20 @@ class ExecutionRepository:
         if workflow_stage:
             values["workflow_stage"] = workflow_stage
 
+        # Desativa execução quando completa (SUCCESS ou ERROR)
+        if status in [ExecutionStatus.SUCCESS, ExecutionStatus.ERROR]:
+            values["is_active"] = False
+
         await self.db.execute(
             update(Execution)
             .where(Execution.id == execution_id)
             .values(**values)
         )
         await self.db.commit()
+
+        # Invalida cache quando execução completa
+        if card_id and status in [ExecutionStatus.SUCCESS, ExecutionStatus.ERROR]:
+            execution_cache.invalidate(card_id)
 
     async def update_execution_status_with_metrics(
         self,
@@ -163,11 +181,12 @@ class ExecutionRepository:
                 print(f"[MetricsCollector] Erro ao coletar métricas: {e}")
 
     async def get_active_execution(self, card_id: str) -> Optional[Execution]:
-        """Busca execução ativa de um card"""
+        """Busca execução ativa de um card (a mais recente)"""
         result = await self.db.execute(
             select(Execution)
             .where(Execution.card_id == card_id)
             .where(Execution.is_active == True)
+            .order_by(Execution.started_at.desc())
         )
         return result.scalar_one_or_none()
 

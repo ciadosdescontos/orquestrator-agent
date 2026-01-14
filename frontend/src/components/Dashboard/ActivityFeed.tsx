@@ -6,6 +6,7 @@ interface ActivityFeedProps {
   maxItems?: number;
   autoRefresh?: boolean;
   refreshInterval?: number;
+  onRefresh?: () => void;
 }
 
 type ActivityType = 'created' | 'moved' | 'completed' | 'archived' | 'updated' | 'executed' | 'commented';
@@ -44,22 +45,31 @@ const ActivityIcon = ({ type }: { type: ActivityType }) => {
 const ActivityFeed = ({
   maxItems = 10,
   autoRefresh = true,
-  refreshInterval = 30000, // 30 seconds
+  refreshInterval = 10000, // 10 seconds
+  onRefresh,
 }: ActivityFeedProps) => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<number>(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const loadActivities = async () => {
+  const loadActivities = async (isManual = false) => {
+    if (isManual) {
+      setIsRefreshing(true);
+    }
     try {
       const data = await fetchRecentActivities(maxItems);
       setActivities(data);
       setError(null);
+      setLastUpdate(Date.now());
+      onRefresh?.();
     } catch (err) {
       setError('Falha ao carregar atividades');
       console.error('Error loading activities:', err);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -72,6 +82,28 @@ const ActivityFeed = ({
       return () => clearInterval(interval);
     }
   }, [maxItems, autoRefresh, refreshInterval]);
+
+  // Update "last update" indicator every second
+  useEffect(() => {
+    if (lastUpdate === 0) return;
+    const interval = setInterval(() => {
+      setLastUpdate((prev) => prev);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lastUpdate]);
+
+  const formatLastUpdate = () => {
+    if (lastUpdate === 0) return '';
+    const now = Date.now();
+    const diffMs = now - lastUpdate;
+    const diffSecs = Math.floor(diffMs / 1000);
+
+    if (diffSecs < 5) return 'agora';
+    if (diffSecs < 60) return `há ${diffSecs}s`;
+    const diffMins = Math.floor(diffSecs / 60);
+    if (diffMins < 60) return `há ${diffMins}min`;
+    return `há ${Math.floor(diffMins / 60)}h`;
+  };
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -167,8 +199,58 @@ const ActivityFeed = ({
   return (
     <div className={styles.activityFeed}>
       <div className={styles.header}>
-        <h3 className={styles.title}>Atividade Recente</h3>
-        <span className={styles.badge}>{activities.length}</span>
+        <div className={styles.headerLeft}>
+          <h3 className={styles.title}>Atividade Recente</h3>
+          {lastUpdate > 0 && (
+            <span className={styles.lastUpdate}>{formatLastUpdate()}</span>
+          )}
+        </div>
+        <div className={styles.headerRight}>
+          <button
+            className={styles.refreshButton}
+            onClick={() => loadActivities(true)}
+            disabled={isRefreshing}
+            title="Atualizar agora"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              style={{ animation: isRefreshing ? 'spin 1s linear infinite' : 'none' }}
+            >
+              <path
+                d="M13.3333 6.00001C13.3333 8.94552 10.9455 11.3333 8 11.3333C5.05448 11.3333 2.66667 8.94552 2.66667 6.00001"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+              <path
+                d="M13.3333 6.00001H11.3333M13.3333 6.00001V8.00001"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M2.66667 10V8"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M2.66667 10H4.66667"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          <span className={styles.badge}>{activities.length}</span>
+        </div>
       </div>
 
       <div className={styles.timeline}>

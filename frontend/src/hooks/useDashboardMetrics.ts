@@ -7,11 +7,14 @@ interface DashboardMetricsData {
   executionData: any;
   insights: any;
   isLoading: boolean;
+  error: string | null;
+  lastUpdate: number;
+  refresh: () => Promise<void>;
 }
 
 /**
  * Hook to fetch and manage dashboard metrics data
- * Auto-refreshes every 60 seconds and receives real-time updates via WebSocket
+ * Auto-refreshes every 10 seconds
  */
 export const useDashboardMetrics = (projectId: string = 'current'): DashboardMetricsData => {
   const [data, setData] = useState<{
@@ -26,9 +29,22 @@ export const useDashboardMetrics = (projectId: string = 'current'): DashboardMet
     insights: null,
   });
   const [isLoading, setIsLoading] = useState(true);
-  const lastUpdateRef = useRef<number>(0);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<number>(0);
+
+  // Track the current request ID to avoid race conditions
+  const requestIdRef = useRef(0);
 
   const loadMetrics = useCallback(async () => {
+    // Increment request ID for this load
+    const currentRequestId = ++requestIdRef.current;
+
+    console.log('[Dashboard] Loading metrics...', `requestId=${currentRequestId}`);
+    setIsLoading(true);
+    setError(null);
+
+    const startTime = Date.now();
+
     try {
       // Fetch all metrics in parallel using existing API
       const [tokens, costs, executions, executionTimes] = await Promise.all([
@@ -37,6 +53,14 @@ export const useDashboardMetrics = (projectId: string = 'current'): DashboardMet
         metricsApi.getExecutionPerformance(projectId),
         metricsApi.getExecutionTimes(projectId, undefined, 10),
       ]);
+
+      // Only update state if this is still the latest request
+      if (currentRequestId !== requestIdRef.current) {
+        console.log('[Dashboard] Request outdated, skipping', `current=${currentRequestId}, latest=${requestIdRef.current}`);
+        return;
+      }
+
+      console.log(`[Dashboard] Metrics fetched in ${Date.now() - startTime}ms`);
 
       // Transform token data to match component expectations
       const transformedTokenData = tokens?.data ? {
@@ -87,34 +111,42 @@ export const useDashboardMetrics = (projectId: string = 'current'): DashboardMet
         insights: [],
       });
 
-      lastUpdateRef.current = Date.now();
-    } catch (error) {
-      console.error('Failed to load dashboard metrics:', error);
-      // Set empty data on error to prevent UI from breaking
-      setData({
-        tokenData: null,
-        costData: null,
-        executionData: null,
-        insights: [],
-      });
+      setLastUpdate(Date.now());
+      setError(null);
+      console.log('[Dashboard] Metrics loaded successfully');
+    } catch (error: any) {
+      // Only update error if this is still the latest request
+      if (currentRequestId === requestIdRef.current) {
+        console.error('[Dashboard] Failed to load metrics:', error);
+        setError('Falha ao carregar métricas');
+      }
     } finally {
-      setIsLoading(false);
+      // Only update loading if this is still the latest request
+      if (currentRequestId === requestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [projectId]);
 
-  // Observação: Como não temos um cardId específico para o dashboard,
-  // WebSocket está desabilitado por enquanto e confiamos no polling.
-  // Em uma implementação futura, poderíamos ter um WebSocket global de métricas.
+  // Manual refresh function
+  const refresh = useCallback(async () => {
+    await loadMetrics();
+  }, [loadMetrics]);
 
+  // Auto-refresh every 10 seconds
   useEffect(() => {
     // Initial load
     loadMetrics();
 
-    // Refresh every 60 seconds (aumentado de 30s para reduzir carga)
-    const interval = setInterval(loadMetrics, 60000);
+    // Refresh every 10 seconds
+    const interval = setInterval(() => {
+      loadMetrics();
+    }, 10000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+    };
   }, [loadMetrics]);
 
-  return { ...data, isLoading };
+  return { ...data, isLoading, error, lastUpdate, refresh };
 };

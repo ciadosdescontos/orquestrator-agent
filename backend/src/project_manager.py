@@ -46,12 +46,16 @@ class ProjectManager:
         project_claude = path / ".claude"
 
         # Copy .claude from root if doesn't exist
+        # NOTE: NÃO copia 'experts' - experts são específicos de cada projeto
         if not project_claude.exists() and self.root_claude_path.exists():
             print(f"[ProjectManager] Copying .claude from root to {project_claude}")
             shutil.copytree(
                 self.root_claude_path,
                 project_claude,
-                ignore=shutil.ignore_patterns('*.pyc', '__pycache__', '.git', '*.db')
+                ignore=shutil.ignore_patterns(
+                    '*.pyc', '__pycache__', '.git', '*.db',
+                    'experts'  # Experts são específicos do projeto, não copiar do orquestrador
+                )
             )
             has_claude_config = True
             claude_config_path = str(project_claude)
