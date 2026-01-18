@@ -81,6 +81,14 @@ class Card(Base):
         comment="Experts identified for this card via expert-triage"
     )
 
+    # Campo para dependencias entre cards (execucao paralela)
+    dependencies: Mapped[List[str] | None] = mapped_column(
+        JSON,
+        nullable=True,
+        default=list,
+        comment="List of card IDs this card depends on for parallel execution"
+    )
+
     # Relacionamento com execuções
     executions = relationship("Execution", back_populates="card", cascade="all, delete-orphan")
 

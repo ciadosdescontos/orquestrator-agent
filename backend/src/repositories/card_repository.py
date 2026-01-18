@@ -59,6 +59,7 @@ class CardRepository:
             is_fix_card=getattr(card_data, 'is_fix_card', False),
             test_error_context=getattr(card_data, 'test_error_context', None),
             base_branch=getattr(card_data, 'base_branch', None),
+            dependencies=getattr(card_data, 'dependencies', []) or [],
         )
         self.session.add(card)
         await self.session.flush()
@@ -250,6 +251,18 @@ class CardRepository:
             return None
 
         card.experts = experts
+        await self.session.flush()
+        await self.session.refresh(card)
+        return card
+
+    async def update_dependencies(self, card_id: str, dependencies: list[str]) -> Optional[Card]:
+        """Update the dependencies for a card (for parallel execution)."""
+        card = await self.get_by_id(card_id)
+        if not card:
+            return None
+
+        # Assign new list to trigger SQLAlchemy change detection
+        card.dependencies = list(dependencies)
         await self.session.flush()
         await self.session.refresh(card)
         return card

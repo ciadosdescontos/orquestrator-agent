@@ -96,6 +96,7 @@ class CardCreate(CardBase):
     is_fix_card: bool = Field(False, alias="isFixCard")
     test_error_context: Optional[str] = Field(None, alias="testErrorContext")
     base_branch: Optional[str] = Field(None, alias="baseBranch")  # Branch base para o worktree
+    dependencies: Optional[List[str]] = Field(default_factory=list)  # Card IDs this card depends on
 
     class Config:
         populate_by_name = True
@@ -115,6 +116,8 @@ class CardUpdate(BaseModel):
     worktree_path: Optional[str] = Field(None, alias="worktreePath")
     # Campos para diff visualization
     diff_stats: Optional[DiffStats] = Field(None, alias="diffStats")
+    # Dependencias para execucao paralela
+    dependencies: Optional[List[str]] = None
 
     class Config:
         populate_by_name = True
@@ -163,6 +166,8 @@ class CardResponse(BaseModel):
     completed_at: Optional[datetime] = Field(None, alias="completedAt")
     # Experts identificados para este card
     experts: Optional[Dict[str, Dict]] = Field(None, alias="experts")
+    # Dependencias para execucao paralela
+    dependencies: Optional[List[str]] = Field(default_factory=list)
 
     @property
     def is_finalized(self) -> bool:
