@@ -23,6 +23,7 @@ class ActionType(str, enum.Enum):
     VERIFY_LIMIT = "verify_limit"
     DECOMPOSE = "decompose"
     EXECUTE_CARD = "execute_card"
+    EXECUTE_CARDS_PARALLEL = "execute_cards_parallel"
     CREATE_FIX = "create_fix"
     WAIT = "wait"
     COMPLETE_GOAL = "complete_goal"

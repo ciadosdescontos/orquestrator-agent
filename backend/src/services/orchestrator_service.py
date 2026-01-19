@@ -158,6 +158,7 @@ class OrchestratorService:
 
                 # Step 1: READ - Get recent context
                 await self.logger.log_read("Reading short-term memory...")
+                await live_broadcast.broadcast_log("📖 Reading context...", "info")
                 context = await self._step_read(repos)
 
                 # Step 2: QUERY - Get relevant learnings
@@ -166,15 +167,33 @@ class OrchestratorService:
 
                 # Step 3: THINK - Decide action
                 await self.logger.log_think("Deciding next action...")
+                await live_broadcast.broadcast_log("🧠 Thinking about next action...", "info")
                 think_result = await self._step_think(context, learnings, repos)
                 await self.logger.log_think(
                     f"Decision: {think_result.decision.value} - {think_result.reason}",
                     goal_id=think_result.goal_id
                 )
+                # Broadcast decision to live spectators
+                await live_broadcast.broadcast_log(
+                    f"💡 Decision: {think_result.decision.value} - {think_result.reason}",
+                    "info"
+                )
 
                 # Step 4: ACT - Execute decision
                 await self.logger.log_act(f"Executing {think_result.decision.value}...")
+                await live_broadcast.broadcast_log(
+                    f"⚡ Executing: {think_result.decision.value}...",
+                    "info"
+                )
                 act_result = await self._step_act(think_result, repos)
+
+                # Broadcast result
+                if act_result.success:
+                    if act_result.data:
+                        data_summary = str(act_result.data)[:100]
+                        await live_broadcast.broadcast_log(f"✅ Success: {data_summary}", "success")
+                else:
+                    await live_broadcast.broadcast_log(f"❌ Failed: {act_result.error}", "error")
 
                 # Step 5: RECORD - Save to short-term memory
                 await self.logger.log_record("Recording result...")
@@ -183,6 +202,7 @@ class OrchestratorService:
                 # Step 6: LEARN - Store learning if applicable
                 if act_result.should_learn and act_result.learning:
                     await self.logger.log_learn(f"Storing learning: {act_result.learning[:50]}...")
+                    await live_broadcast.broadcast_log(f"📚 Learning: {act_result.learning[:80]}...", "info")
                     await self._step_learn(think_result, act_result, repos)
 
                 await session.commit()
@@ -293,24 +313,17 @@ class OrchestratorService:
             # Check for cards ready to execute (in backlog or workflow columns with satisfied deps)
             ready_cards = [c for c in cards_status if c.get("ready_to_execute")]
             if ready_cards:
-                ready_card_ids = [c.get("id") for c in ready_cards]
+                # Execute one card at a time to avoid SQLAlchemy session conflicts
+                first_card_id = ready_cards[0].get("id")
+                return ThinkResult(
+                    decision=OrchestratorDecision.EXECUTE_CARD,
+                    goal_id=active_goal.id,
+                    card_ids=[first_card_id],
+                    reason=f"Card {first_card_id[:8]} ready to execute ({len(ready_cards)} cards waiting)"
+                )
 
-                if len(ready_card_ids) == 1:
-                    # Single card ready - use standard execution
-                    return ThinkResult(
-                        decision=OrchestratorDecision.EXECUTE_CARD,
-                        goal_id=active_goal.id,
-                        card_ids=ready_card_ids,
-                        reason=f"Card {ready_card_ids[0][:8]} ready to execute"
-                    )
-                else:
-                    # Multiple cards ready - execute in parallel
-                    return ThinkResult(
-                        decision=OrchestratorDecision.EXECUTE_CARDS_PARALLEL,
-                        goal_id=active_goal.id,
-                        card_ids=ready_card_ids,
-                        reason=f"{len(ready_card_ids)} cards ready for parallel execution"
-                    )
+                # NOTE: Parallel execution disabled due to SQLAlchemy session conflicts
+                # TODO: Fix session management to re-enable parallel execution
 
             # Check if all cards are done
             done_cards = [c for c in cards_status if c.get("column") in ["done", "completed"]]
@@ -468,6 +481,13 @@ class OrchestratorService:
             goal_id=goal_id
         )
 
+        # Broadcast to live spectators
+        live_broadcast = get_live_broadcast_service()
+        await live_broadcast.broadcast_log(
+            f"🤖 AI analyzing goal with Opus 4.5...",
+            "info"
+        )
+
         # Use AI to decompose the goal into multiple cards
         from .goal_decomposer_service import decompose_goal
         from ..schemas.card import CardCreate
@@ -491,10 +511,20 @@ class OrchestratorService:
                 f"Decomposition failed: {decomposition.error}",
                 goal_id=goal_id
             )
+            await live_broadcast.broadcast_log(
+                f"❌ Decomposition failed: {decomposition.error}",
+                "error"
+            )
             return ActResult(
                 success=False,
                 error=decomposition.error or "Failed to decompose goal"
             )
+
+        # Broadcast decomposition result
+        await live_broadcast.broadcast_log(
+            f"🎯 AI planned {len(decomposition.cards)} tasks to complete the goal",
+            "success"
+        )
 
         # First pass: Create all cards and build order-to-ID mapping
         created_cards = []
@@ -532,6 +562,12 @@ class OrchestratorService:
                 f"Created card {len(created_cards)}/{len(decomposition.cards)}: {card.title[:40]}...",
                 goal_id=goal_id,
                 data={"card_id": card.id, "order": decomposed_card.order}
+            )
+
+            # Broadcast card creation to live spectators
+            await live_broadcast.broadcast_log(
+                f"📋 Card {len(created_cards)}/{len(decomposition.cards)}: {card.title}",
+                "info"
             )
 
         # Second pass: Update cards with resolved dependency IDs
@@ -828,7 +864,7 @@ class OrchestratorService:
         )
 
     async def _act_complete_goal(self, goal_id: str, repos: Dict[str, Any]) -> ActResult:
-        """Complete a goal and extract learning."""
+        """Complete a goal and extract learning, then start voting for next project."""
         goal_repo = repos["goal_repo"]
 
         goal = await goal_repo.get_by_id(goal_id)
@@ -839,8 +875,23 @@ class OrchestratorService:
         await goal_repo.update_status(goal_id, GoalStatus.COMPLETED)
 
         # Extract learning
-        # TODO: Use AI to generate learning from goal execution
         learning = f"Completed goal: {goal.description}. Cards: {len(goal.cards or [])}."
+
+        # Broadcast completion to live spectators
+        live_broadcast = get_live_broadcast_service()
+        await live_broadcast.broadcast_log("🎉 Projeto concluído!", "success")
+        await live_broadcast.update_status(is_working=False, current_stage="completed")
+
+        # For live_mode goals: save to gallery and start voting
+        if goal.source in ["live_mode", "live_mode_voting"]:
+            # Small delay to ensure previous transaction is fully committed
+            await asyncio.sleep(1)
+            # Create CompletedProject for gallery
+            await self._save_completed_project(goal)
+            # Another delay before voting
+            await asyncio.sleep(1)
+            # Start voting for next project
+            await self._start_voting_for_next_project()
 
         return ActResult(
             success=True,
@@ -848,6 +899,119 @@ class OrchestratorService:
             learning=learning,
             data={"cards_completed": len(goal.cards or [])}
         )
+
+    async def _save_completed_project(self, goal) -> None:
+        """Save completed project to gallery."""
+        from uuid import uuid4
+        from ..models.live import CompletedProject
+        from ..database import async_session_maker
+
+        live_broadcast = get_live_broadcast_service()
+
+        # Parse source_id: "folder|title|category"
+        if not goal.source_id:
+            logger.warning("Goal has no source_id, skipping gallery save")
+            return
+
+        try:
+            parts = goal.source_id.split("|")
+            project_folder = parts[0] if len(parts) > 0 else "unknown"
+            project_title = parts[1] if len(parts) > 1 else "Projeto"
+            project_category = parts[2] if len(parts) > 2 else None
+
+            # Create CompletedProject
+            async with async_session_maker() as session:
+                completed = CompletedProject(
+                    id=str(uuid4()),
+                    title=project_title,
+                    description=goal.description[:500] if goal.description else None,
+                    category=project_category,
+                    preview_url=f"/projects/{project_folder}/index.html",
+                    screenshot_url=None,  # TODO: Add screenshot generation
+                    like_count=0,
+                    card_id=goal.cards[0] if goal.cards else None,
+                )
+                session.add(completed)
+                await session.commit()
+
+                logger.info(f"[Orchestrator] Saved to gallery: {project_title}")
+                await live_broadcast.broadcast_log(
+                    f"📸 Projeto adicionado à galeria: {project_title}",
+                    "success"
+                )
+
+                # Broadcast new project to gallery
+                await live_broadcast.broadcast({
+                    "type": "project_added",
+                    "project": {
+                        "id": completed.id,
+                        "title": completed.title,
+                        "preview_url": completed.preview_url,
+                        "like_count": 0
+                    }
+                })
+
+        except Exception as e:
+            logger.exception(f"[Orchestrator] Failed to save to gallery: {e}")
+            await live_broadcast.broadcast_log(f"⚠️ Erro ao salvar na galeria: {e}", "error")
+
+    async def _start_voting_for_next_project(self) -> None:
+        """Start a voting round with 3 random project options."""
+        import random
+        from ..routes.live import PROJECT_OPTIONS
+        from .voting_service import get_voting_service
+        from ..database import async_session_maker
+
+        live_broadcast = get_live_broadcast_service()
+        voting_service = get_voting_service()
+
+        # Check if voting is already active
+        if voting_service.is_active:
+            logger.warning("Voting already active, skipping auto-start")
+            return
+
+        # Select 3 random projects
+        selected_projects = random.sample(PROJECT_OPTIONS, min(3, len(PROJECT_OPTIONS)))
+
+        # Prepare voting options
+        voting_options = [
+            {
+                "title": p["title"],
+                "description": p["description"],
+                "category": p["id"],  # Used to start project after voting
+            }
+            for p in selected_projects
+        ]
+
+        # Broadcast that voting is starting
+        await live_broadcast.broadcast_log("⏳ Votação começa em 5 segundos...", "info")
+        await asyncio.sleep(5)
+
+        # Start voting round (60 seconds)
+        async with async_session_maker() as session:
+            try:
+                voting_round, options = await voting_service.start_round(
+                    db=session,
+                    duration_seconds=60,
+                    options=voting_options
+                )
+
+                # Broadcast voting started
+                await live_broadcast.broadcast_voting_started(
+                    options=[
+                        {"id": o.id, "title": o.title, "description": o.description, "vote_count": 0}
+                        for o in options
+                    ],
+                    ends_at=voting_round.ends_at.isoformat(),
+                    duration_seconds=60
+                )
+
+                await live_broadcast.broadcast_log("🗳️ VOTE AGORA! 60 segundos!", "success")
+                logger.info(f"[Orchestrator] Auto-started voting with {len(options)} options")
+
+            except Exception as e:
+                logger.exception(f"[Orchestrator] Failed to start voting: {e}")
+                await live_broadcast.broadcast_log(f"❌ Erro ao iniciar votação: {e}", "error")
 
     # ==================== HELPERS ====================
 

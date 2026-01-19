@@ -38,9 +38,9 @@ const initialState: LiveState = {
   kanban: {
     columns: {
       backlog: [],
-      planning: [],
-      implementing: [],
-      testing: [],
+      plan: [],
+      implement: [],
+      test: [],
       review: [],
       done: [],
     },
@@ -79,6 +79,12 @@ function liveReducer(state: LiveState, action: LiveAction): LiveState {
       const toCol = action.toColumn as LiveColumnId;
       const newColumns = { ...state.kanban.columns };
 
+      // Safety check - ensure columns exist
+      if (!newColumns[fromCol] || !newColumns[toCol]) {
+        console.warn(`[LiveWS] Invalid columns: from=${fromCol}, to=${toCol}`);
+        return state;
+      }
+
       // Remove from old column
       newColumns[fromCol] = newColumns[fromCol].filter(c => c.id !== action.card.id);
 
@@ -94,6 +100,13 @@ function liveReducer(state: LiveState, action: LiveAction): LiveState {
     case 'CARD_CREATED': {
       const col = action.card.columnId as LiveColumnId;
       const newColumns = { ...state.kanban.columns };
+
+      // Safety check - ensure column exists
+      if (!newColumns[col]) {
+        console.warn(`[LiveWS] Invalid column for card creation: ${col}`);
+        return state;
+      }
+
       newColumns[col] = [...newColumns[col], action.card];
 
       return {
@@ -109,6 +122,13 @@ function liveReducer(state: LiveState, action: LiveAction): LiveState {
     case 'CARD_UPDATED': {
       const col = action.card.columnId as LiveColumnId;
       const newColumns = { ...state.kanban.columns };
+
+      // Safety check - ensure column exists
+      if (!newColumns[col]) {
+        console.warn(`[LiveWS] Invalid column for card update: ${col}`);
+        return state;
+      }
+
       newColumns[col] = newColumns[col].map(c =>
         c.id === action.card.id ? action.card : c
       );
@@ -284,8 +304,11 @@ export function useLiveWebSocket() {
     enabled: true,
     onMessage: handleMessage,
     name: 'LiveWS',
-    maxReconnectAttempts: 15,
-    heartbeatInterval: 30000,
+    maxReconnectAttempts: 9999, // Praticamente infinito
+    baseReconnectDelay: 500,    // Começar com 500ms
+    maxReconnectDelay: 10000,   // Máximo 10s entre tentativas
+    heartbeatInterval: 15000,   // Heartbeat a cada 15s
+    pongTimeout: 5000,          // Timeout pong em 5s
   });
 
   // Voting countdown timer

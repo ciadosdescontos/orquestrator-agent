@@ -37,7 +37,7 @@ class Settings(BaseSettings):
 
     # Orchestrator settings
     orchestrator_enabled: bool = True
-    orchestrator_loop_interval_seconds: int = 180  # 3 minutes
+    orchestrator_loop_interval_seconds: int = 60  # 1 minute
     orchestrator_log_file: str = "orchestrator.log"
     orchestrator_usage_limit_percent: int = 80  # Pause if usage > 80%
 

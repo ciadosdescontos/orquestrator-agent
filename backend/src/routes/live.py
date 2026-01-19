@@ -31,33 +31,15 @@ router = APIRouter(prefix="/api/live", tags=["live"])
 
 LIVE_PROJECTS_PATH = os.environ.get("LIVE_PROJECTS_PATH", "/opt/zenflow/live-projects")
 
-LIVE_MODE_PROMPT = """Voce eh uma IA desenvolvedora que esta sendo assistida AO VIVO por varias pessoas!
+LIVE_MODE_PROMPT = """⚠️ IMPORTANTE: CRIE APENAS 1 CARD. NÃO DECOMPONHA!
 
-CONTEXTO:
-- Voce esta em um "AI Live Studio" onde espectadores assistem voce programar em tempo real
-- As pessoas veem seu Kanban, logs e progresso de cada tarefa
-- Seu objetivo eh ENTRETER e IMPRESSIONAR quem esta assistindo!
+Projeto: {project_type}
+Pasta: {projects_path}/{project_folder}/
 
-SUA MISSAO:
-Crie projetos INTERESSANTES, VISUAIS e DIVERTIDOS! Exemplos:
-- Jogos simples (Snake, Pong, Tetris, Quiz, Jogo da Velha)
-- Visualizacoes criativas (Arte generativa, Animacoes CSS, Efeitos visuais)
-- Ferramentas uteis (Conversor, Gerador de senhas, Timer Pomodoro)
-- Mini-apps interativos (Todo list estilizado, Calculadora bonita)
+Crie o projeto completo em um ÚNICO arquivo index.html com HTML/CSS/JS inline.
+O projeto deve ser funcional e visualmente atraente.
 
-REGRAS:
-1. SEMPRE crie projetos que funcionem e possam ser visualizados
-2. Use HTML/CSS/JS para projetos web (facil de ver resultado)
-3. Cada projeto deve ficar em sua propria pasta dentro de {projects_path}
-4. Seja criativo e varie os tipos de projeto
-5. Faca commits frequentes para os espectadores verem o progresso
-6. Use nomes descritivos e divertidos para os projetos
-7. Apos terminar um projeto, comece outro automaticamente!
-
-PASTA DE TRABALHO: {projects_path}
-Crie subpastas para cada projeto: projeto1-snake/, projeto2-arte/, etc.
-
-Comece agora! Escolha algo interessante para criar e impressione a audiencia!"""
+⚠️ REGRA ABSOLUTA: 1 CARD APENAS. Não divida em múltiplas tarefas."""
 
 # Global state for live mode
 _live_mode_active = False
@@ -264,23 +246,47 @@ async def like_project(
 
 @router.post("/admin/start-voting")
 async def admin_start_voting(
-    duration_seconds: int = 300,
+    duration_seconds: int = 60,
     db: AsyncSession = Depends(get_db)
 ):
-    """Start a new voting round (admin only)."""
+    """Start a new voting round with project options (admin only)."""
     voting = get_voting_service()
+    broadcast = get_live_broadcast_service()
 
     if voting.is_active:
         raise HTTPException(status_code=400, detail="Voting is already active")
 
-    round, options = await voting.start_round(db, duration_seconds)
+    # Use PROJECT_OPTIONS as voting options
+    voting_options = [
+        {
+            "title": p["title"],
+            "description": p["description"],
+            "category": p["id"],  # Use id as category for mapping back
+        }
+        for p in PROJECT_OPTIONS
+    ]
+
+    round, options = await voting.start_round(db, duration_seconds, voting_options)
+
+    # Broadcast voting started to live spectators
+    await broadcast.broadcast_voting_started(
+        options=[
+            {"id": o.id, "title": o.title, "description": o.description, "vote_count": 0}
+            for o in options
+        ],
+        ends_at=round.ends_at.isoformat(),
+        duration_seconds=duration_seconds
+    )
+
+    await broadcast.broadcast_log(f"🗳️ VOTING STARTED! {duration_seconds}s to vote!", "success")
 
     return {
         "success": True,
         "round_id": round.id,
         "ends_at": round.ends_at.isoformat(),
+        "duration_seconds": duration_seconds,
         "options": [
-            {"id": o.id, "title": o.title, "category": o.category}
+            {"id": o.id, "title": o.title, "category": o.category, "description": o.description}
             for o in options
         ]
     }
@@ -350,13 +356,136 @@ async def get_live_mode_status():
     }
 
 
+# Opções de projetos para votação
+PROJECT_OPTIONS = [
+    {"id": "snake", "title": "🐍 Jogo da Cobrinha", "description": "Snake game classico com visual neon", "folder": "snake-game"},
+    {"id": "memory", "title": "🎯 Jogo da Memoria", "description": "Jogo de encontrar pares de cartas", "folder": "memory-game"},
+    {"id": "calculator", "title": "🧮 Calculadora Bonita", "description": "Calculadora com design moderno", "folder": "calculator"},
+    {"id": "pomodoro", "title": "🍅 Timer Pomodoro", "description": "Timer de produtividade estilizado", "folder": "pomodoro-timer"},
+    {"id": "quiz", "title": "🎮 Quiz Interativo", "description": "Quiz de perguntas e respostas", "folder": "quiz-game"},
+    {"id": "todo", "title": "📝 Todo List Elegante", "description": "Lista de tarefas com animacoes", "folder": "todo-list"},
+    {"id": "weather", "title": "🌤️ App de Clima", "description": "Mostra clima com visual bonito", "folder": "weather-app"},
+    {"id": "piano", "title": "🎹 Piano Virtual", "description": "Piano tocavel pelo teclado", "folder": "virtual-piano"},
+]
+
+# Contador de projetos para gerar folders únicos
+_project_counter = 0
+
+
+async def _start_project_by_id(project_id: str) -> dict:
+    """Internal function to start a project by its ID. Called after voting ends."""
+    global _live_mode_active, _project_counter
+
+    # Find project in options
+    project = next((p for p in PROJECT_OPTIONS if p["id"] == project_id), None)
+    if not project:
+        raise ValueError(f"Project not found: {project_id}")
+
+    _project_counter += 1
+    project_folder = f"projeto{_project_counter}-{project['folder']}"
+
+    # Create directories
+    os.makedirs(LIVE_PROJECTS_PATH, exist_ok=True)
+    os.makedirs(os.path.join(LIVE_PROJECTS_PATH, "specs"), exist_ok=True)
+
+    # Set as active project
+    from ..models.project import ActiveProject
+    from ..database import async_session_maker
+    from sqlalchemy import delete
+
+    async with async_session_maker() as session:
+        await session.execute(delete(ActiveProject))
+        live_project = ActiveProject(
+            id="live-projects",
+            path=LIVE_PROJECTS_PATH,
+            name="Live Projects",
+            has_claude_config=False,
+            claude_config_path=None,
+        )
+        session.add(live_project)
+        await session.commit()
+
+    # Get orchestrator and submit goal
+    from ..services.orchestrator_service import get_orchestrator_service
+
+    orchestrator = get_orchestrator_service()
+    prompt = LIVE_MODE_PROMPT.format(
+        projects_path=LIVE_PROJECTS_PATH,
+        project_type=project["title"],
+        project_folder=project_folder
+    )
+
+    result = await orchestrator.submit_goal(
+        description=prompt,
+        source="live_mode_voting",
+        source_id=f"{project_folder}|{project['title']}|{project.get('id', '')}"  # folder|title|category
+    )
+
+    _live_mode_active = True
+
+    # Broadcast
+    broadcast = get_live_broadcast_service()
+    await broadcast.update_status(is_working=True, current_stage="starting")
+    await broadcast.broadcast_log(f"🚀 Starting: {project['title']}", "success")
+    await broadcast.broadcast_log(f"📁 Folder: {project_folder}", "info")
+
+    return {
+        "success": True,
+        "project": project,
+        "project_folder": project_folder
+    }
+
+
 @router.post("/admin/live-mode/start")
-async def start_live_mode(db: AsyncSession = Depends(get_db)):
+async def start_live_mode(
+    project_type: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
     """Start live mode - submit the entertainment goal to orchestrator."""
-    global _live_mode_active
+    global _live_mode_active, _project_counter
 
     if _live_mode_active:
         raise HTTPException(status_code=400, detail="Live mode is already active")
+
+    # Set active project to live-projects directory
+    from ..models.project import ActiveProject
+    from ..database import async_session_maker
+    from sqlalchemy import delete
+    import os
+    import random
+
+    # Selecionar projeto (passado ou aleatório)
+    if project_type:
+        project = next((p for p in PROJECT_OPTIONS if p["id"] == project_type), None)
+        if not project:
+            project = random.choice(PROJECT_OPTIONS)
+    else:
+        # Primeiro projeto é aleatório
+        project = random.choice(PROJECT_OPTIONS)
+
+    _project_counter += 1
+    project_folder = f"projeto{_project_counter}-{project['folder']}"
+
+    # Create live-projects directory if it doesn't exist
+    os.makedirs(LIVE_PROJECTS_PATH, exist_ok=True)
+    os.makedirs(os.path.join(LIVE_PROJECTS_PATH, "specs"), exist_ok=True)
+
+    # Set as active project
+    async with async_session_maker() as session:
+        # Clear previous active projects
+        await session.execute(delete(ActiveProject))
+
+        # Create live project entry
+        live_project = ActiveProject(
+            id="live-projects",
+            path=LIVE_PROJECTS_PATH,
+            name="Live Projects",
+            has_claude_config=False,
+            claude_config_path=None,
+        )
+        session.add(live_project)
+        await session.commit()
+        print(f"[LiveMode] Set active project to: {LIVE_PROJECTS_PATH}")
 
     # Import orchestrator service
     from ..services.orchestrator_service import get_orchestrator_service
@@ -364,14 +493,19 @@ async def start_live_mode(db: AsyncSession = Depends(get_db)):
     # Get orchestrator
     orchestrator = get_orchestrator_service()
 
-    # Format prompt with projects path
-    prompt = LIVE_MODE_PROMPT.format(projects_path=LIVE_PROJECTS_PATH)
+    # Format prompt with project details
+    prompt = LIVE_MODE_PROMPT.format(
+        projects_path=LIVE_PROJECTS_PATH,
+        project_type=project["title"],
+        project_folder=project_folder
+    )
 
-    # Submit as a new goal
+    # Submit as a new goal (source_id stores project info for later)
     try:
         result = await orchestrator.submit_goal(
             description=prompt,
-            source="live_mode"
+            source="live_mode",
+            source_id=f"{project_folder}|{project['title']}|{project.get('id', '')}"  # folder|title|category
         )
         goal_id = result.get("goal_id") if isinstance(result, dict) else str(result)
 
@@ -380,12 +514,15 @@ async def start_live_mode(db: AsyncSession = Depends(get_db)):
         # Broadcast status update
         broadcast = get_live_broadcast_service()
         await broadcast.update_status(is_working=True, current_stage="starting")
-        await broadcast.broadcast_log("Live mode started! AI is now creating projects for entertainment!", "success")
+        await broadcast.broadcast_log(f"🚀 Iniciando projeto: {project['title']}", "success")
+        await broadcast.broadcast_log(f"📁 Pasta: {project_folder}", "info")
 
         return {
             "success": True,
             "message": "Live mode started",
             "goal_id": goal_id,
+            "project": project,
+            "project_folder": project_folder,
             "projects_path": LIVE_PROJECTS_PATH
         }
 

@@ -26,7 +26,7 @@ export interface LiveCard {
   createdAt: string;
 }
 
-export type LiveColumnId = 'backlog' | 'planning' | 'implementing' | 'testing' | 'review' | 'done';
+export type LiveColumnId = 'backlog' | 'plan' | 'implement' | 'test' | 'review' | 'done';
 
 export interface LiveKanban {
   columns: Record<LiveColumnId, LiveCard[]>;

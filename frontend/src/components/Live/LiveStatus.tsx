@@ -6,16 +6,20 @@ interface LiveStatusProps {
 }
 
 const STAGE_LABELS: Record<string, string> = {
-  planning: 'Planning',
-  implementing: 'Implementing',
-  testing: 'Testing',
+  starting: 'Starting',
+  thinking: 'Thinking',
+  plan: 'Planning',
+  implement: 'Implementing',
+  test: 'Testing',
   review: 'Reviewing',
 };
 
 const STAGE_ICONS: Record<string, string> = {
-  planning: '📝',
-  implementing: '🔨',
-  testing: '🧪',
+  starting: '🚀',
+  thinking: '🧠',
+  plan: '📝',
+  implement: '🔨',
+  test: '🧪',
   review: '🔍',
 };
 

@@ -96,6 +96,10 @@ class LiveBroadcastService:
     async def _send_initial_state(self, session_id: str, websocket: WebSocket) -> None:
         """Send initial state to a new connection."""
         try:
+            # Check if still connected
+            if websocket.client_state.name != "CONNECTED":
+                return
+
             presence = get_presence_service()
             voting = get_voting_service()
 
@@ -136,6 +140,10 @@ class LiveBroadcastService:
     async def _send_to_one(self, websocket: WebSocket, message: Any) -> bool:
         """Send message to a single connection."""
         try:
+            # Check if websocket is still open
+            if websocket.client_state.name != "CONNECTED":
+                return False
+
             if hasattr(message, 'model_dump'):
                 data = message.model_dump(mode='json')
             else:
@@ -143,7 +151,9 @@ class LiveBroadcastService:
             await websocket.send_json(data)
             return True
         except Exception as e:
-            logger.error(f"Error sending to WebSocket: {e}")
+            # Don't log common disconnection errors
+            if "close message" not in str(e).lower():
+                logger.error(f"Error sending to WebSocket: {e}")
             return False
 
     async def broadcast(self, message: Any) -> int:
@@ -161,10 +171,17 @@ class LiveBroadcastService:
 
         for session_id, ws in connections:
             try:
+                # Check if websocket is still connected
+                if ws.client_state.name != "CONNECTED":
+                    failed.append(session_id)
+                    continue
+
                 await ws.send_json(data)
                 sent += 1
             except Exception as e:
-                logger.error(f"Error broadcasting to {session_id[:8]}...: {e}")
+                # Don't spam logs with common disconnection errors
+                if "close message" not in str(e).lower():
+                    logger.error(f"Error broadcasting to {session_id[:8]}...: {e}")
                 failed.append(session_id)
 
         # Cleanup failed connections
@@ -271,6 +288,28 @@ class LiveBroadcastService:
         await self.broadcast(WSPresenceUpdate(spectator_count=count))
 
     # =========================================================================
+    # Voting Methods
+    # =========================================================================
+
+    async def broadcast_voting_started(
+        self,
+        options: list,
+        ends_at: str,
+        duration_seconds: int
+    ) -> None:
+        """Broadcast voting started to spectators."""
+        await self.broadcast({
+            "type": "voting_started",
+            "options": options,
+            "ends_at": ends_at,
+            "duration_seconds": duration_seconds
+        })
+
+    async def broadcast_voting_update(self, votes: dict) -> None:
+        """Broadcast vote count update."""
+        await self.broadcast(WSVotingUpdate(votes=votes))
+
+    # =========================================================================
     # Voting Callbacks
     # =========================================================================
 
@@ -297,7 +336,7 @@ class LiveBroadcastService:
         await self.broadcast(WSVotingUpdate(votes=votes))
 
     async def _on_voting_ended(self, winner, all_options) -> None:
-        """Handle voting ended."""
+        """Handle voting ended and start winning project."""
         if winner:
             winner_schema = VotingOptionSchema(
                 id=winner.id,
@@ -310,7 +349,7 @@ class LiveBroadcastService:
             winner_schema = None
 
         await self.broadcast(WSVotingEnded(
-            round_id="",  # Will be set properly
+            round_id="",
             winner=winner_schema,
             results=[
                 VotingOptionSchema(
@@ -323,6 +362,22 @@ class LiveBroadcastService:
                 for opt in sorted(all_options, key=lambda o: o.vote_count, reverse=True)
             ]
         ))
+
+        # Auto-start the winning project!
+        if winner:
+            await self.broadcast_log(f"🏆 Winner: {winner.title} ({winner.vote_count} votes)!", "success")
+            await self.broadcast_log(f"🚀 Starting project in 3 seconds...", "info")
+
+            # Small delay for UX
+            await asyncio.sleep(3)
+
+            # Start the winning project (category contains the project id)
+            try:
+                from ..routes.live import _start_project_by_id
+                await _start_project_by_id(winner.category)
+            except Exception as e:
+                logger.error(f"Failed to start winning project: {e}")
+                await self.broadcast_log(f"❌ Failed to start project: {e}", "error")
 
     # =========================================================================
     # Project Likes

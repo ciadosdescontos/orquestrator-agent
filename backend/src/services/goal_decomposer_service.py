@@ -42,16 +42,21 @@ DECOMPOSITION_PROMPT = """Você é um especialista em decomposição de tarefas 
 {goal_description}
 
 ## Sua Tarefa
-Decomponha este objetivo em cards/tarefas menores e executáveis. Cada card deve ser:
+Analise o objetivo e decida se ele deve ser decomposto ou não.
+
+**IMPORTANTE**: Se o objetivo explicitamente diz para NÃO decompor, criar APENAS 1 card, ou fazer algo simples, você DEVE respeitar isso e criar APENAS 1 card!
+
+Se a decomposição for apropriada, cada card deve ser:
 - Específico e bem definido
 - Executável de forma independente (quando possível)
 - Pequeno o suficiente para ser completado em uma sessão de trabalho
 
 ## Regras
-1. Crie entre 2 e 7 cards (nem muito poucos, nem muitos)
-2. Ordene por dependência (tarefas base primeiro)
-3. Cada card deve ter um título claro e descrição detalhada
-4. Inclua tarefas de teste quando aplicável
+1. Se o objetivo diz "não decomponha", "apenas 1 card", "simples", etc: crie APENAS 1 card
+2. Caso contrário: crie entre 2 e 7 cards
+3. Ordene por dependência (tarefas base primeiro)
+4. Cada card deve ter um título claro e descrição detalhada
+5. Inclua tarefas de teste quando aplicável
 
 ## Formato de Resposta
 Responda APENAS com um JSON válido no seguinte formato:
@@ -107,6 +112,7 @@ class GoalDecomposerService:
             prompt = DECOMPOSITION_PROMPT.format(goal_description=goal_description)
 
             # Configure Claude Agent SDK for Opus 4.5
+            # Note: use "acceptEdits" instead of "bypassPermissions" to work with root user
             options = ClaudeAgentOptions(
                 cwd=self.cwd,
                 setting_sources=["user", "project"],
@@ -115,8 +121,8 @@ class GoalDecomposerService:
                     "Glob",   # Allow searching files
                     "Grep",   # Allow searching content
                 ],
-                permission_mode="bypassPermissions",
-                model="claude-opus-4-5",
+                permission_mode="acceptEdits",
+                model="opus",
             )
 
             # Collect response

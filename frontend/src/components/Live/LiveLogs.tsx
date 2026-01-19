@@ -11,6 +11,10 @@ const LOG_TYPE_COLORS: Record<string, string> = {
   success: '#22c55e',
   error: '#ef4444',
   warning: '#f59e0b',
+  // Claude Code log types
+  text: '#a78bfa',     // Purple for AI text output
+  tool: '#06b6d4',     // Cyan for tool usage
+  result: '#10b981',   // Green for results
 };
 
 export function LiveLogs({ logs }: LiveLogsProps) {

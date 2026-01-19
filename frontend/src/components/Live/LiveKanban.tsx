@@ -7,23 +7,23 @@ interface LiveKanbanProps {
 
 const COLUMN_LABELS: Record<LiveColumnId, string> = {
   backlog: 'Backlog',
-  planning: 'Planning',
-  implementing: 'Implementing',
-  testing: 'Testing',
+  plan: 'Planning',
+  implement: 'Implementing',
+  test: 'Testing',
   review: 'Review',
   done: 'Done',
 };
 
 const COLUMN_ICONS: Record<LiveColumnId, string> = {
   backlog: '📋',
-  planning: '📝',
-  implementing: '🔨',
-  testing: '🧪',
+  plan: '📝',
+  implement: '🔨',
+  test: '🧪',
   review: '🔍',
   done: '✅',
 };
 
-const COLUMN_ORDER: LiveColumnId[] = ['backlog', 'planning', 'implementing', 'testing', 'review', 'done'];
+const COLUMN_ORDER: LiveColumnId[] = ['backlog', 'plan', 'implement', 'test', 'review', 'done'];
 
 export function LiveKanbanBoard({ kanban }: LiveKanbanProps) {
   return (
